@@ -4,26 +4,26 @@
 - [x] 1.2 实现 Node CLI dispatcher，并支持 `memo`、`memo --help` 和 `memo help` 展示全部命令。
 - [x] 1.3 引入 `@inquirer/prompts` 并封装交互式选择、确认和多选能力。
 - [x] 1.4 建立 i18n 文案层，至少支持 English 和简体中文。
-- [ ] 1.5 统一 shell 脚本规范，包括严格错误处理、路径校验和一致的用户错误提示。
+- [x] 1.5 统一 shell 脚本规范，包括严格错误处理、路径校验和一致的用户错误提示。
 
 ## 2. 交互式初始化与信息展示
 
-- [ ] 2.1 实现 `memo init` 的语言选择流程：English / 简体中文。
-- [ ] 2.2 实现 `memo init` 的模式选择流程：本地模式 / 远端同步模式。
-- [ ] 2.3 实现 vault 路径、notes 目录、assets 目录的交互式配置，并保留非交互参数。
-- [ ] 2.4 本地模式下检测 vault 是否为 Git 工作区；如果是，询问是否启用确认后本地 commit。
-- [ ] 2.5 实现 `~/.config/memo/config` 配置文件写入，并确保语言、模式、安装目标、本地 commit 偏好等稳定确认状态使用 shell-safe quoting 持久化。
-- [ ] 2.6 实现 `memo info`，展示语言、模式、vault、目录、平台安装状态、本地 commit 偏好，以及远端模式下的 Git 信息。
+- [x] 2.1 实现 `memo init` 的语言选择流程：English / 简体中文。
+- [x] 2.2 实现 `memo init` 的模式选择流程：本地模式 / 远端同步模式。
+- [x] 2.3 实现 vault 路径、notes 目录、assets 目录的交互式配置，并保留非交互参数。
+- [x] 2.4 本地模式下检测 vault 是否为 Git 工作区；如果是，询问是否启用确认后本地 commit。
+- [x] 2.5 实现 `~/.config/memo/config` 配置文件写入，并确保语言、模式、安装目标、本地 commit 偏好等稳定确认状态使用 shell-safe quoting 持久化。
+- [x] 2.6 实现 `memo info`，展示语言、模式、vault、目录、平台安装状态、本地 commit 偏好，以及远端模式下的 Git 信息。
 - [ ] 2.7 实现 `memo config`，支持修改语言、模式、vault 路径、notes/assets 目录、本地 commit 偏好和已确认安装目标。
 - [ ] 2.8 在 `memo config` 修改模式或路径时复用 init/doctor 校验逻辑，并使用 shell-safe quoting 更新配置文件。
 
 ## 3. 初始化校验与 Doctor
 
-- [ ] 3.1 实现本地模式校验：vault 存在、可写，notes/assets 目录可创建或可写。
-- [ ] 3.2 本地模式启用本地 commit 时，额外校验 vault 是可提交的 Git 工作区，但不校验 remote。
-- [ ] 3.3 实现远端模式校验：vault 可写、Git worktree、remote 存在、当前分支可识别、`git pull --ff-only` 成功。
-- [ ] 3.4 在远端模式 Git worktree 校验失败时，输出普通 `git clone` 仓库目录就是 Git worktree 的解释和修复建议。
-- [ ] 3.5 实现 `memo doctor` 和 `memo doctor --quiet`，并按 local/remote 模式执行不同 readiness 检查。
+- [x] 3.1 实现本地模式校验：vault 存在、可写，notes/assets 目录可创建或可写。
+- [x] 3.2 本地模式启用本地 commit 时，额外校验 vault 是可提交的 Git 工作区，但不校验 remote。
+- [x] 3.3 实现远端模式校验：vault 可写、Git worktree、remote 存在、当前分支可识别、`git pull --ff-only` 成功。
+- [x] 3.4 在远端模式 Git worktree 校验失败时，输出普通 `git clone` 仓库目录就是 Git worktree 的解释和修复建议。
+- [x] 3.5 实现 `memo doctor` 和 `memo doctor --quiet`，并按 local/remote 模式执行不同 readiness 检查。
 
 ## 4. 平台 Skill 安装
 
