@@ -35,18 +35,18 @@
 
 ## 5. 笔记与附件写入
 
-- [ ] 5.1 实现 `memo write`，支持 Markdown content file、标题 sanitize、目录选择和 vault 内唯一 draft `.md` 路径。
-- [ ] 5.2 实现同一归档会话内的 draft 更新，用户要求修改时更新同一份 Markdown 文件。
-- [ ] 5.3 实现 session manifest，记录本次创建的 draft 文件、附件文件和运行模式，存放在 `~/.config/memo/state/sessions/` 而不是 `~/.config/memo/config` 或 Obsidian vault。
-- [ ] 5.4 实现图片附件复制，放入配置指定的 asset layout，并在同一归档会话内复用附件目录。
-- [ ] 5.5 从笔记文件到复制后的附件文件生成 vault-relative Markdown 图片链接。
+- [x] 5.1 实现 `memo write`，支持 Markdown content file、标题 sanitize、目录选择和 vault 内唯一 draft `.md` 路径。
+- [x] 5.2 实现同一归档会话内的 draft 更新，用户要求修改时更新同一份 Markdown 文件。
+- [x] 5.3 实现 session manifest，记录本次创建的 draft 文件、附件文件和运行模式，存放在 `~/.config/memo/state/sessions/` 而不是 `~/.config/memo/config` 或 Obsidian vault。
+- [x] 5.4 实现图片附件复制，放入配置指定的 asset layout，并在同一归档会话内复用附件目录。
+- [x] 5.5 从笔记文件到复制后的附件文件生成 vault-relative Markdown 图片链接。
 - [ ] 5.6 实现放弃归档清理：根据 session manifest 删除本次会话创建过的 draft 文件和全部附件文件，包括修改过程中被替换的附件。
-- [ ] 5.7 当笔记内容为空、目标路径逃逸 vault、任一附件不可读时，写入必须原子失败。
+- [x] 5.7 当笔记内容为空、目标路径逃逸 vault、任一附件不可读时，写入必须原子失败。
 
 ## 6. Git 状态、提交与推送
 
 - [ ] 6.1 实现远端模式运行时 pull 行为，使用配置中的 remote 和 fast-forward-only 策略。
-- [ ] 6.2 实现 `memo status`，在写入后报告 note 路径、附件路径和模式相关状态；远端模式额外报告 Git diff 摘要。
+- [x] 6.2 实现 `memo status`，在写入后报告 note 路径、附件路径和模式相关状态；远端模式额外报告 Git diff 摘要。
 - [ ] 6.3 实现 `memo commit --message <message>`，支持远端模式和启用本地 commit 的本地模式，确保只有用户确认归档后的笔记和复制附件才会提交。
 - [ ] 6.4 实现远端模式 `memo push`，推送到配置中的 remote 和 branch。
 - [ ] 6.5 在本地模式下跳过 pull、push 和 remote 同步操作；若启用本地 commit，则确认后只 commit 不 push。

@@ -126,6 +126,12 @@ export async function main(argv = []) {
   if (command === 'install') {
     return runInstall(argv.slice(1));
   }
+  if (command === 'write') {
+    return forwardScript('memo-write.sh', argv.slice(1));
+  }
+  if (command === 'status') {
+    return forwardScript('memo-status.sh', argv.slice(1));
+  }
 
   const status = await runPlaceholder(command, language);
   process.exitCode = status;

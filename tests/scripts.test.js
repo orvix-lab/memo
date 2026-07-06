@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -8,6 +8,7 @@ import test from 'node:test';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const memoBin = path.join(repoRoot, 'bin', 'memo');
+const attachmentFixture = path.join(repoRoot, 'tests', 'fixtures', 'attachments', 'image-1.png');
 
 function makeTempRoot() {
   return mkdtempSync(path.join(tmpdir(), 'memo-test-'));
@@ -219,4 +220,85 @@ test('install codex copies skill files and preserves user config', () => {
   assert.match(after, /MEMO_VAULT='/);
   assert.notEqual(after, '');
   assert.match(before, /MEMO_VAULT='/);
+});
+
+test('write creates a sanitized draft, copies attachments, and records manifest', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+  const contentFile = path.join(root, 'content.md');
+  writeFileSync(contentFile, '# Memo Title\n\nBody text.\n');
+
+  const result = runMemo(root, [
+    'write',
+    '--session',
+    'session-a',
+    '--title',
+    'Memo Title!',
+    '--content-file',
+    contentFile,
+    '--attachment',
+    attachmentFixture,
+  ]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Session: session-a/);
+  assert.match(result.stdout, /Draft:/);
+
+  const note = path.join(vault, 'Notes', `${new Date().toISOString().slice(0, 10)}-memo-title.md`);
+  assert.equal(existsSync(note), true);
+  const noteText = readFileSync(note, 'utf8');
+  assert.match(noteText, /Body text/);
+  assert.match(noteText, /!\[image-1\]\(\.\.\/assets\/\d{4}\/\d{2}\/memo-title\/image-1\.png\)/);
+
+  const manifest = readFileSync(path.join(root, 'memo-home', 'state', 'sessions', 'session-a.manifest'), 'utf8');
+  assert.match(manifest, /SESSION_ID='session-a'/);
+  assert.match(manifest, /DRAFT_REL='Notes\//);
+  assert.match(manifest, /ATTACHMENT_COUNT='1'/);
+});
+
+test('write updates the same draft for the same session', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+  const first = path.join(root, 'first.md');
+  const second = path.join(root, 'second.md');
+  writeFileSync(first, 'first body\n');
+  writeFileSync(second, 'second body\n');
+
+  assert.equal(runMemo(root, ['write', '--session', 'session-b', '--title', 'Same Draft', '--content-file', first]).status, 0);
+  assert.equal(runMemo(root, ['write', '--session', 'session-b', '--title', 'Changed Title', '--content-file', second]).status, 0);
+
+  const note = path.join(vault, 'Notes', `${new Date().toISOString().slice(0, 10)}-same-draft.md`);
+  assert.equal(readFileSync(note, 'utf8'), 'second body\n');
+});
+
+test('write rejects empty content without creating a draft', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+  const contentFile = path.join(root, 'empty.md');
+  writeFileSync(contentFile, '');
+
+  const result = runMemo(root, ['write', '--session', 'empty-session', '--title', 'Empty', '--content-file', contentFile]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /content is empty/);
+  assert.equal(existsSync(path.join(vault, 'Notes', `${new Date().toISOString().slice(0, 10)}-empty.md`)), false);
+});
+
+test('status reports current draft and local mode', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+  const contentFile = path.join(root, 'status.md');
+  writeFileSync(contentFile, 'status body\n');
+  assert.equal(runMemo(root, ['write', '--session', 'status-session', '--title', 'Status Note', '--content-file', contentFile]).status, 0);
+
+  const result = runMemo(root, ['status', '--session', 'status-session']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Mode: local/);
+  assert.match(result.stdout, /Draft:/);
+  assert.doesNotMatch(result.stdout, /push/);
 });
