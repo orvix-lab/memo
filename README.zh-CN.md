@@ -53,10 +53,13 @@ npm install -g ./orvix-memo-0.1.0.tgz
 memo install --target codex
 ```
 
-或：
+支持的目标包括 `codex`、`claude`、`kiro`、`cursor` 和 `all`：
 
 ```sh
 memo install --target claude
+memo install --target kiro
+memo install --target cursor
+memo install --target all
 ```
 
 ## 快速开始
@@ -76,7 +79,7 @@ memo init
 - 笔记目录：
   - `Auto`：推荐，由 AI 根据笔记内容判断写到哪个文件夹。
   - 自定义固定目录：始终写入指定的 vault 相对目录。
-- 安装目标：Codex、Claude Code 或暂时跳过。
+- 安装目标：Codex、Claude Code、Kiro、Cursor 或暂时跳过。
 
 查看当前配置：
 

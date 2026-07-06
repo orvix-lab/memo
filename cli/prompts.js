@@ -52,12 +52,16 @@ export function installTargetChoices(language = 'en') {
     return [
       { name: 'Codex', value: 'codex' },
       { name: 'Claude Code', value: 'claude' },
+      { name: 'Kiro', value: 'kiro' },
+      { name: 'Cursor', value: 'cursor' },
       { name: '暂时跳过', value: 'skip' },
     ];
   }
   return [
     { name: 'Codex', value: 'codex' },
     { name: 'Claude Code', value: 'claude' },
+    { name: 'Kiro', value: 'kiro' },
+    { name: 'Cursor', value: 'cursor' },
     { name: 'Skip for now', value: 'skip' },
   ];
 }
@@ -93,6 +97,8 @@ export async function chooseTargets(message = 'Install targets') {
     choices: [
       { name: 'Codex', value: 'codex' },
       { name: 'Claude Code', value: 'claude' },
+      { name: 'Kiro', value: 'kiro' },
+      { name: 'Cursor', value: 'cursor' },
     ],
   });
 }

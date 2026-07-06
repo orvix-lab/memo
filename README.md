@@ -53,10 +53,13 @@ Then install the AI skill into your tool:
 memo install --target codex
 ```
 
-or:
+Supported targets are `codex`, `claude`, `kiro`, `cursor`, and `all`:
 
 ```sh
 memo install --target claude
+memo install --target kiro
+memo install --target cursor
+memo install --target all
 ```
 
 ## Quick Start
@@ -76,7 +79,7 @@ During setup, choose:
 - Notes directory:
   - `Auto`: recommended; the AI chooses the folder based on note content.
   - Custom folder: always write into a fixed vault-relative directory.
-- Install target: Codex, Claude Code, or skip.
+- Install target: Codex, Claude Code, Kiro, Cursor, or skip.
 
 Check the current configuration:
 

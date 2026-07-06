@@ -53,7 +53,7 @@ case "$MEMO_MODE" in
 esac
 
 case "$INSTALL_TARGET" in
-  ""|skip|codex|claude) ;;
+  ""|skip|codex|claude|kiro|cursor) ;;
   *) memo_error "Invalid install target: $INSTALL_TARGET"; exit 2 ;;
 esac
 
@@ -61,8 +61,8 @@ memo_write_config
 
 case "$INSTALL_TARGET" in
   ""|skip) ;;
-  codex|claude)
-    "$SCRIPT_DIR/memo-install.sh" --target "$INSTALL_TARGET" >/dev/null
+  codex|claude|kiro|cursor)
+    sh "$SCRIPT_DIR/memo-install.sh" --target "$INSTALL_TARGET" >/dev/null
     ;;
 esac
 

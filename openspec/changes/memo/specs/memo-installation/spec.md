@@ -18,13 +18,21 @@ CLI SHALL 只有在用户明确运行 `memo install --target <target>` 或在 `m
 - **WHEN** 用户运行 `memo install --target codex`
 - **THEN** CLI 把 memo skill 安装到 Codex skill 目录，并且不修改 Claude Code 文件
 
+#### Scenario: 安装到 Kiro
+- **WHEN** 用户运行 `memo install --target kiro`
+- **THEN** CLI 把 memo skill 安装到 Kiro skill 目录，并记录已确认安装目标为 `kiro`
+
+#### Scenario: 安装到 Cursor
+- **WHEN** 用户运行 `memo install --target cursor`
+- **THEN** CLI 把 memo skill 安装到 Cursor skill 目录，并记录已确认安装目标为 `cursor`
+
 #### Scenario: 交互式安装到 Codex
 - **WHEN** 用户运行 `memo install` 并在交互列表中选择 Codex 后确认
 - **THEN** CLI 把 memo skill 安装到 Codex skill 目录
 
 #### Scenario: 安装到所有支持的平台
 - **WHEN** 用户运行 `memo install --target all`
-- **THEN** CLI 把 memo skill 安装到当前机器上所有已支持且可检测的平台
+- **THEN** CLI 把 memo skill 安装到 Codex、Claude Code、Kiro 和 Cursor 的支持目录
 
 ### Requirement: 安装过程保留用户配置
 安装过程 SHALL NOT 把用户 vault 配置存放在 npm 包目录或平台 skill 目录中。

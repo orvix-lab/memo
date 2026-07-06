@@ -122,6 +122,13 @@ test('init prompt helpers expose banner, mode explanations, and Auto notes optio
   assert.equal(notes[1].value, 'custom');
 });
 
+test('init install target choices include Kiro and Cursor', async () => {
+  const { installTargetChoices } = await import('../cli/prompts.js');
+  const targets = installTargetChoices('en').map((choice) => choice.value);
+
+  assert.deepEqual(targets, ['codex', 'claude', 'kiro', 'cursor', 'skip']);
+});
+
 test('help uses persisted language preference after init', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'memo-cli-test-'));
   const vault = path.join(root, 'vault');

@@ -1,5 +1,5 @@
 workflow: full
-phase: archive
+phase: build
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -12,11 +12,11 @@ auto_transition: true
 base_ref: null
 design_doc: docs/superpowers/specs/2026-07-06-memo-design.md
 plan: docs/superpowers/plans/2026-07-06-memo.md
-verify_result: pass
+verify_result: fail
 verification_report: docs/superpowers/reports/2026-07-06-memo-verify.md
 branch_status: handled
 created_at: 2026-07-06
-verified_at: 2026-07-06
+verified_at: null
 archived: false
 handoff_context: openspec/changes/memo/.comet/handoff/design-context.json
 handoff_hash: 205c33c7734e303e4779294ef9de1f1addbd28805ab7937d7df82c2693d28dd2

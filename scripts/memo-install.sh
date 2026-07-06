@@ -31,12 +31,30 @@ install_claude() {
   printf 'claude\n'
 }
 
+install_kiro() {
+  dest="${KIRO_HOME:-$HOME/.kiro}/skills/memo"
+  mkdir -p "$dest"
+  cp "$REPO_ROOT/skill/SKILL.md" "$dest/SKILL.md"
+  cp "$REPO_ROOT/skill/metadata.json" "$dest/metadata.json"
+  printf 'kiro\n'
+}
+
+install_cursor() {
+  dest="${CURSOR_HOME:-$HOME/.cursor}/skills/memo"
+  mkdir -p "$dest"
+  cp "$REPO_ROOT/skill/SKILL.md" "$dest/SKILL.md"
+  cp "$REPO_ROOT/skill/metadata.json" "$dest/metadata.json"
+  printf 'cursor\n'
+}
+
 installed=""
 case "$TARGET" in
   codex) installed="$(install_codex)" ;;
   claude) installed="$(install_claude)" ;;
+  kiro) installed="$(install_kiro)" ;;
+  cursor) installed="$(install_cursor)" ;;
   all)
-    installed="$(install_codex),$(install_claude)"
+    installed="$(install_codex),$(install_claude),$(install_kiro),$(install_cursor)"
     ;;
   *) memo_error "Invalid install target: $TARGET"; exit 2 ;;
 esac

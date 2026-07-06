@@ -69,3 +69,10 @@
 - [x] 8.7 增加回归测试覆盖 banner、模式说明、Auto 写入路径、init 安装跳过和 frontmatter 协议。
 
 <!-- review skipped: subagent dispatch unavailable without explicit user request in this runtime -->
+
+## 9. Kiro 与 Cursor 安装目标补充
+
+- [x] 9.1 在 `memo install` 和 `memo init` 安装目标选项中加入 Kiro、Cursor。
+- [x] 9.2 实现 `memo install --target kiro` 和 `memo install --target cursor`。
+- [x] 9.3 更新 `memo install --target all`，包含 Codex、Claude Code、Kiro、Cursor。
+- [x] 9.4 增加回归测试覆盖 Kiro/Cursor 安装、all 目标和 init 安装目标持久化。

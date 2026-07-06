@@ -47,6 +47,12 @@ function git(root, args) {
   });
 }
 
+function draftPathFromOutput(output) {
+  const match = output.match(/^Draft: (.+)$/m);
+  assert.notEqual(match, null, output);
+  return match[1];
+}
+
 test('doctor fails before memo is initialized', () => {
   const root = makeTempRoot();
   const result = runMemo(root, ['doctor']);
@@ -222,6 +228,84 @@ test('install codex copies skill files and preserves user config', () => {
   assert.match(before, /MEMO_VAULT='/);
 });
 
+test('install kiro and cursor copy skill files and update confirmed targets', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  const kiroHome = path.join(root, 'kiro-home');
+  const cursorHome = path.join(root, 'cursor-home');
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+
+  const kiro = runMemo(root, ['install', '--target', 'kiro'], {
+    env: { KIRO_HOME: kiroHome },
+  });
+  assert.equal(kiro.status, 0, kiro.stderr);
+  assert.equal(existsSync(path.join(kiroHome, 'skills', 'memo', 'SKILL.md')), true);
+  assert.equal(existsSync(path.join(kiroHome, 'skills', 'memo', 'metadata.json')), true);
+
+  const cursor = runMemo(root, ['install', '--target', 'cursor'], {
+    env: { CURSOR_HOME: cursorHome },
+  });
+  assert.equal(cursor.status, 0, cursor.stderr);
+  assert.equal(existsSync(path.join(cursorHome, 'skills', 'memo', 'SKILL.md')), true);
+  assert.equal(existsSync(path.join(cursorHome, 'skills', 'memo', 'metadata.json')), true);
+
+  const config = readFileSync(path.join(root, 'memo-home', 'config'), 'utf8');
+  assert.match(config, /MEMO_CONFIRMED_INSTALL_TARGETS='cursor'/);
+});
+
+test('install all includes codex claude kiro and cursor targets', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  const codexHome = path.join(root, 'codex-home');
+  const claudeHome = path.join(root, 'claude-home');
+  const kiroHome = path.join(root, 'kiro-home');
+  const cursorHome = path.join(root, 'cursor-home');
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+
+  const result = runMemo(root, ['install', '--target', 'all'], {
+    env: {
+      CODEX_HOME: codexHome,
+      CLAUDE_HOME: claudeHome,
+      KIRO_HOME: kiroHome,
+      CURSOR_HOME: cursorHome,
+    },
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(path.join(codexHome, 'skills', 'memo', 'SKILL.md')), true);
+  assert.equal(existsSync(path.join(claudeHome, 'skills', 'memo', 'SKILL.md')), true);
+  assert.equal(existsSync(path.join(kiroHome, 'skills', 'memo', 'SKILL.md')), true);
+  assert.equal(existsSync(path.join(cursorHome, 'skills', 'memo', 'SKILL.md')), true);
+
+  const config = readFileSync(path.join(root, 'memo-home', 'config'), 'utf8');
+  assert.match(config, /MEMO_CONFIRMED_INSTALL_TARGETS='codex,claude,kiro,cursor'/);
+});
+
+test('init can install to kiro and persist the target', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  const kiroHome = path.join(root, 'kiro-home');
+
+  const init = runMemo(root, [
+    'init',
+    '--language',
+    'en',
+    '--mode',
+    'local',
+    '--vault',
+    vault,
+    '--install-target',
+    'kiro',
+  ], {
+    env: { KIRO_HOME: kiroHome },
+  });
+
+  assert.equal(init.status, 0, init.stderr);
+  assert.equal(existsSync(path.join(kiroHome, 'skills', 'memo', 'SKILL.md')), true);
+  const config = readFileSync(path.join(root, 'memo-home', 'config'), 'utf8');
+  assert.match(config, /MEMO_CONFIRMED_INSTALL_TARGETS='kiro'/);
+});
+
 test('write creates a sanitized draft, copies attachments, and records manifest', () => {
   const root = makeTempRoot();
   const vault = makeVault(root);
@@ -245,7 +329,7 @@ test('write creates a sanitized draft, copies attachments, and records manifest'
   assert.match(result.stdout, /Session: session-a/);
   assert.match(result.stdout, /Draft:/);
 
-  const note = path.join(vault, 'Notes', `${new Date().toISOString().slice(0, 10)}-memo-title.md`);
+  const note = draftPathFromOutput(result.stdout);
   assert.equal(existsSync(note), true);
   const noteText = readFileSync(note, 'utf8');
   assert.match(noteText, /Body text/);
@@ -266,10 +350,11 @@ test('write updates the same draft for the same session', () => {
   writeFileSync(first, 'first body\n');
   writeFileSync(second, 'second body\n');
 
-  assert.equal(runMemo(root, ['write', '--session', 'session-b', '--title', 'Same Draft', '--content-file', first]).status, 0);
+  const firstWrite = runMemo(root, ['write', '--session', 'session-b', '--title', 'Same Draft', '--content-file', first]);
+  assert.equal(firstWrite.status, 0, firstWrite.stderr);
   assert.equal(runMemo(root, ['write', '--session', 'session-b', '--title', 'Changed Title', '--content-file', second]).status, 0);
 
-  const note = path.join(vault, 'Notes', `${new Date().toISOString().slice(0, 10)}-same-draft.md`);
+  const note = draftPathFromOutput(firstWrite.stdout);
   assert.equal(readFileSync(note, 'utf8'), 'second body\n');
 });
 
@@ -399,7 +484,7 @@ test('abandon removes only manifest-listed draft and attachments', () => {
   assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
   const contentFile = path.join(root, 'abandon.md');
   writeFileSync(contentFile, 'abandon body\n');
-  assert.equal(runMemo(root, [
+  const write = runMemo(root, [
     'write',
     '--session',
     'abandon-session',
@@ -409,8 +494,9 @@ test('abandon removes only manifest-listed draft and attachments', () => {
     contentFile,
     '--attachment',
     attachmentFixture,
-  ]).status, 0);
-  const note = path.join(vault, 'Notes', `${new Date().toISOString().slice(0, 10)}-abandon-note.md`);
+  ]);
+  assert.equal(write.status, 0, write.stderr);
+  const note = draftPathFromOutput(write.stdout);
   assert.equal(existsSync(note), true);
 
   const result = runMemo(root, ['write', '--abandon', '--session', 'abandon-session']);
@@ -635,5 +721,5 @@ test('remote write does not perform a second pull after readiness checks', () =>
   ]);
 
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(existsSync(path.join(vault, 'Notes', `${new Date().toISOString().slice(0, 10)}-remote-write.md`)), true);
+  assert.equal(existsSync(draftPathFromOutput(result.stdout)), true);
 });
