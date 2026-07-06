@@ -547,3 +547,45 @@ test('auto notes mode writes to caller-provided vault-relative path', () => {
   assert.equal(existsSync(note), true);
   assert.equal(readFileSync(note, 'utf8'), 'auto path body\n');
 });
+
+test('sync pulls remote changes into a remote-mode vault', () => {
+  const root = makeTempRoot();
+  const origin = path.join(root, 'origin.git');
+  const seed = path.join(root, 'seed');
+  const vault = path.join(root, 'vault');
+
+  assert.equal(git(root, ['init', '--bare', origin]).status, 0);
+  assert.equal(git(root, ['clone', origin, seed]).status, 0);
+  assert.equal(git(seed, ['checkout', '-b', 'main']).status, 0);
+  writeFileSync(path.join(seed, 'README.md'), 'initial\n');
+  assert.equal(git(seed, ['add', 'README.md']).status, 0);
+  assert.equal(git(seed, ['commit', '-m', 'Initial']).status, 0);
+  assert.equal(git(seed, ['push', 'origin', 'main']).status, 0);
+  assert.equal(git(root, ['clone', '--branch', 'main', origin, vault]).status, 0);
+
+  const init = runMemo(root, [
+    'init',
+    '--language',
+    'en',
+    '--mode',
+    'remote',
+    '--vault',
+    vault,
+    '--remote',
+    'origin',
+    '--branch',
+    'main',
+  ]);
+  assert.equal(init.status, 0, init.stderr);
+
+  writeFileSync(path.join(seed, 'Remote.md'), 'remote update\n');
+  assert.equal(git(seed, ['add', 'Remote.md']).status, 0);
+  assert.equal(git(seed, ['commit', '-m', 'Remote update']).status, 0);
+  assert.equal(git(seed, ['push', 'origin', 'main']).status, 0);
+
+  const sync = runMemo(root, ['sync']);
+
+  assert.equal(sync.status, 0, sync.stderr);
+  assert.match(sync.stdout, /memo synced/);
+  assert.equal(readFileSync(path.join(vault, 'Remote.md'), 'utf8'), 'remote update\n');
+});

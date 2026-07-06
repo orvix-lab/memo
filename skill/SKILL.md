@@ -15,7 +15,14 @@ Before writing any file, run:
 memo doctor --quiet
 ```
 
-If the command fails, stop. Tell the user to run `memo init` or fix the reported vault/Git problem. Do not create notes manually.
+If the command fails, run `memo info` to determine the configured mode. In remote mode, run:
+
+```sh
+memo sync
+memo doctor --quiet
+```
+
+If `memo sync` succeeds and the second doctor check passes, continue. If `memo sync` fails, stop and report the Git error. Do not attempt merge, rebase, stash, reset, or conflict resolution without explicit user approval. In local mode or uninitialized mode, stop and tell the user to run `memo init` or fix the reported vault problem. Do not create notes manually.
 
 ## Determine Mode
 
@@ -28,7 +35,7 @@ memo info
 Use the reported mode:
 
 - In local mode, do not run remote validation, `git pull`, or `memo push`.
-- In remote mode, `memo doctor --quiet` performs the configured fast-forward-only pull before writing. If it fails, stop and ask the user to synchronize the vault manually.
+- In remote mode, `memo doctor --quiet` performs the configured fast-forward-only pull before writing. If it fails, try `memo sync` once, then rerun `memo doctor --quiet`.
 
 ## Write Draft
 
@@ -107,4 +114,4 @@ This deletes only files recorded in the session manifest and does not commit or 
 - Do not store user vault configuration in the skill directory.
 - Do not commit unrelated vault changes.
 - Do not push in local mode.
-- Do not retry a failed remote pull by changing Git state; ask the user to resolve synchronization.
+- Do not retry a failed remote pull by changing Git state. Only `memo sync` is allowed automatically; merge, rebase, stash, reset, or conflict resolution requires explicit user approval.

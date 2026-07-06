@@ -42,6 +42,7 @@ const commands = [
   'install',
   'write',
   'status',
+  'sync',
   'info',
   'commit',
   'push',
@@ -88,6 +89,7 @@ test('skill metadata exposes memo and runtime protocol covers confirmation gates
 
   assert.equal(metadata.name, 'memo');
   assert.match(skill, /memo doctor --quiet/);
+  assert.match(skill, /memo sync/);
   assert.match(skill, /remote mode/i);
   assert.match(skill, /local mode/i);
   assert.match(skill, /memo write/);

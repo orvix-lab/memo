@@ -189,7 +189,7 @@ memo_validate_local_git_commit() {
   fi
 }
 
-memo_validate_remote_git() {
+memo_require_remote_git_config() {
   if ! memo_is_git_worktree; then
     memo_error "Remote mode requires the vault to be a Git worktree."
     memo_error "A normal directory created by git clone is a Git worktree; configure a Git repository and remote first."
@@ -202,6 +202,22 @@ memo_validate_remote_git() {
     memo_error "Configured git remote is missing: $MEMO_GIT_REMOTE"
     return 1
   fi
+}
+
+memo_sync_remote_git() {
+  memo_require_remote_git_config || return 1
+  if ! git -C "$MEMO_VAULT" fetch "$MEMO_GIT_REMOTE"; then
+    memo_error "git fetch failed for $MEMO_GIT_REMOTE. Check credentials and network access."
+    return 1
+  fi
+  if ! git -C "$MEMO_VAULT" pull --ff-only "$MEMO_GIT_REMOTE" "$MEMO_GIT_BRANCH"; then
+    memo_error "git pull --ff-only failed for $MEMO_GIT_REMOTE $MEMO_GIT_BRANCH. Resolve local changes, conflicts, or divergent history before writing."
+    return 1
+  fi
+}
+
+memo_validate_remote_git() {
+  memo_require_remote_git_config || return 1
   if ! git -C "$MEMO_VAULT" pull --ff-only "$MEMO_GIT_REMOTE" "$MEMO_GIT_BRANCH" >/dev/null 2>&1; then
     memo_error "git pull --ff-only failed for $MEMO_GIT_REMOTE $MEMO_GIT_BRANCH. Synchronize the vault manually first."
     return 1
