@@ -1,5 +1,6 @@
 import { commandDescriptions, t } from './i18n.js';
 import { chooseLanguage, chooseMode, confirm, inputText } from './prompts.js';
+import { chooseTargets } from './prompts.js';
 import { runScript } from './run-script.js';
 import { spawnSync } from 'node:child_process';
 
@@ -76,6 +77,21 @@ async function runInit(args) {
   return forwardScript('memo-init.sh', nextArgs);
 }
 
+async function runInstall(args) {
+  if (args.length > 0) {
+    return forwardScript('memo-install.sh', args);
+  }
+  const targets = await chooseTargets('Install memo into');
+  let status = 0;
+  for (const target of targets) {
+    const result = forwardScript('memo-install.sh', ['--target', target]);
+    if (result !== 0) {
+      status = result;
+    }
+  }
+  return status;
+}
+
 async function runPlaceholder(command, language) {
   console.error(t(language, 'notImplemented', { command }));
   return 2;
@@ -103,6 +119,12 @@ export async function main(argv = []) {
   }
   if (command === 'info') {
     return forwardScript('memo-info.sh', argv.slice(1));
+  }
+  if (command === 'config') {
+    return forwardScript('memo-configure.sh', argv.slice(1));
+  }
+  if (command === 'install') {
+    return runInstall(argv.slice(1));
   }
 
   const status = await runPlaceholder(command, language);

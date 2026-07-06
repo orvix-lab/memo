@@ -14,8 +14,8 @@
 - [x] 2.4 本地模式下检测 vault 是否为 Git 工作区；如果是，询问是否启用确认后本地 commit。
 - [x] 2.5 实现 `~/.config/memo/config` 配置文件写入，并确保语言、模式、安装目标、本地 commit 偏好等稳定确认状态使用 shell-safe quoting 持久化。
 - [x] 2.6 实现 `memo info`，展示语言、模式、vault、目录、平台安装状态、本地 commit 偏好，以及远端模式下的 Git 信息。
-- [ ] 2.7 实现 `memo config`，支持修改语言、模式、vault 路径、notes/assets 目录、本地 commit 偏好和已确认安装目标。
-- [ ] 2.8 在 `memo config` 修改模式或路径时复用 init/doctor 校验逻辑，并使用 shell-safe quoting 更新配置文件。
+- [x] 2.7 实现 `memo config`，支持修改语言、模式、vault 路径、notes/assets 目录、本地 commit 偏好和已确认安装目标。
+- [x] 2.8 在 `memo config` 修改模式或路径时复用 init/doctor 校验逻辑，并使用 shell-safe quoting 更新配置文件。
 
 ## 3. 初始化校验与 Doctor
 
@@ -27,11 +27,11 @@
 
 ## 4. 平台 Skill 安装
 
-- [ ] 4.1 实现 `memo install` 交互列表，支持上下键移动、空格选择、回车确认。
-- [ ] 4.2 实现 `memo install --target codex`，把 `skill/SKILL.md` 和元数据安装到 Codex skill 目录。
-- [ ] 4.3 在 Claude Code 目标目录约定确认后，实现 `memo install --target claude`。
-- [ ] 4.4 实现 `memo install --target all`，并按平台分别输出成功或失败结果。
-- [ ] 4.5 确保平台安装和 npm 升级不会覆盖 `~/.config/memo/config`。
+- [x] 4.1 实现 `memo install` 交互列表，支持上下键移动、空格选择、回车确认。
+- [x] 4.2 实现 `memo install --target codex`，把 `skill/SKILL.md` 和元数据安装到 Codex skill 目录。
+- [x] 4.3 在 Claude Code 目标目录约定确认后，实现 `memo install --target claude`。
+- [x] 4.4 实现 `memo install --target all`，并按平台分别输出成功或失败结果。
+- [x] 4.5 确保平台安装和 npm 升级不会覆盖 `~/.config/memo/config`。
 
 ## 5. 笔记与附件写入
 

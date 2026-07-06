@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -171,4 +171,52 @@ test('info reports local mode without remote operations', () => {
   assert.match(info.stdout, /Mode: local/);
   assert.match(info.stdout, /Remote sync: disabled/);
   assert.doesNotMatch(info.stdout, /Git remote:/);
+});
+
+test('config updates language while preserving vault settings', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+
+  const configResult = runMemo(root, ['config', '--language', 'zh-CN']);
+  assert.equal(configResult.status, 0, configResult.stderr);
+
+  const config = readFileSync(path.join(root, 'memo-home', 'config'), 'utf8');
+  assert.match(config, /MEMO_LANGUAGE='zh-CN'/);
+  const realVault = realpathSync(vault);
+  assert.match(config, new RegExp(`MEMO_VAULT='${realVault.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`));
+  assert.match(config, /MEMO_MODE='local'/);
+});
+
+test('config rejects enabling local commit outside a git worktree', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+
+  const result = runMemo(root, ['config', '--local-git-commit', 'enabled']);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Git worktree/);
+});
+
+test('install codex copies skill files and preserves user config', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  const codexHome = path.join(root, 'codex-home');
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+  const before = readFileSync(path.join(root, 'memo-home', 'config'), 'utf8');
+
+  const result = runMemo(root, ['install', '--target', 'codex'], {
+    env: { CODEX_HOME: codexHome },
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(path.join(codexHome, 'skills', 'memo', 'SKILL.md')), true);
+  assert.equal(existsSync(path.join(codexHome, 'skills', 'memo', 'metadata.json')), true);
+
+  const after = readFileSync(path.join(root, 'memo-home', 'config'), 'utf8');
+  assert.match(after, /MEMO_CONFIRMED_INSTALL_TARGETS='codex'/);
+  assert.match(after, /MEMO_VAULT='/);
+  assert.notEqual(after, '');
+  assert.match(before, /MEMO_VAULT='/);
 });
