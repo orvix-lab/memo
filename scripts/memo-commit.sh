@@ -26,6 +26,7 @@ fi
 manifest="$MEMO_STATE_DIR/sessions/$SESSION_ID.manifest"
 [ -f "$manifest" ] || { memo_error "session manifest not found: $SESSION_ID"; exit 1; }
 draft_abs="$(memo_config_value DRAFT_ABS "$manifest")"
+draft_rel="$(memo_config_value DRAFT_REL "$manifest")"
 attachment_count="$(memo_config_value ATTACHMENT_COUNT "$manifest" 2>/dev/null || printf 0)"
 
 case "$draft_abs" in
@@ -33,20 +34,27 @@ case "$draft_abs" in
   *) memo_error "draft path escapes vault"; exit 1 ;;
 esac
 
-git -C "$MEMO_VAULT" add "$draft_abs"
+memo_require_file_parent_inside_vault "$draft_abs" "draft" || exit 1
+
+set -- "$draft_rel"
 i=1
 while [ "$i" -le "$attachment_count" ]; do
   attachment="$(memo_config_value "ATTACHMENT_ABS_$i" "$manifest" 2>/dev/null || printf '')"
+  attachment_rel="$(memo_config_value "ATTACHMENT_REL_$i" "$manifest" 2>/dev/null || printf '')"
   if [ -n "$attachment" ]; then
     case "$attachment" in
-      "$MEMO_VAULT"/*) git -C "$MEMO_VAULT" add "$attachment" ;;
+      "$MEMO_VAULT"/*)
+        memo_require_file_parent_inside_vault "$attachment" "attachment" || exit 1
+        [ -n "$attachment_rel" ] && set -- "$@" "$attachment_rel"
+        ;;
       *) memo_error "attachment path escapes vault"; exit 1 ;;
     esac
   fi
   i=$((i + 1))
 done
 
-git -C "$MEMO_VAULT" commit -m "$MESSAGE"
+git -C "$MEMO_VAULT" add -- "$@"
+git -C "$MEMO_VAULT" commit -m "$MESSAGE" -- "$@"
 tmp="${manifest}.$$"
 awk '
   /^ARCHIVED=/ { print "ARCHIVED='\''true'\''"; next }

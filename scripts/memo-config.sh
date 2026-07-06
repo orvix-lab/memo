@@ -96,6 +96,23 @@ memo_vault_realpath() {
   (cd "$1" 2>/dev/null && pwd -P)
 }
 
+memo_require_physical_dir_inside_vault() {
+  path="$1"
+  label="$2"
+  real="$(memo_vault_realpath "$path")" || { memo_error "$label is not a directory: $path"; return 1; }
+  case "$real" in
+    "$MEMO_VAULT"|"$MEMO_VAULT"/*) return 0 ;;
+    *) memo_error "$label escapes vault: $path"; return 1 ;;
+  esac
+}
+
+memo_require_file_parent_inside_vault() {
+  path="$1"
+  label="$2"
+  parent="$(dirname "$path")"
+  memo_require_physical_dir_inside_vault "$parent" "$label parent" || return 1
+}
+
 memo_validate_vault() {
   [ -n "$MEMO_VAULT" ] || { memo_error "Vault path is required."; return 1; }
   [ -d "$MEMO_VAULT" ] || { memo_error "Vault path does not exist: $MEMO_VAULT"; return 1; }
@@ -107,6 +124,8 @@ memo_prepare_vault_dirs() {
   memo_validate_relative_dir "$MEMO_NOTES_DIR" "Notes directory" || return 1
   memo_validate_relative_dir "$MEMO_ASSETS_DIR" "Assets directory" || return 1
   mkdir -p "$MEMO_VAULT/$MEMO_NOTES_DIR" "$MEMO_VAULT/$MEMO_ASSETS_DIR" || return 1
+  memo_require_physical_dir_inside_vault "$MEMO_VAULT/$MEMO_NOTES_DIR" "Notes directory" || return 1
+  memo_require_physical_dir_inside_vault "$MEMO_VAULT/$MEMO_ASSETS_DIR" "Assets directory" || return 1
   [ -w "$MEMO_VAULT/$MEMO_NOTES_DIR" ] || { memo_error "Notes directory is not writable."; return 1; }
   [ -w "$MEMO_VAULT/$MEMO_ASSETS_DIR" ] || { memo_error "Assets directory is not writable."; return 1; }
 }

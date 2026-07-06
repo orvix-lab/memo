@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -343,6 +343,39 @@ test('local commit enabled commits confirmed draft and attachments', () => {
   assert.match(manifest, /ARCHIVED='true'/);
 });
 
+test('commit does not include unrelated pre-staged vault changes', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(git(vault, ['init']).status, 0);
+  assert.equal(git(vault, ['checkout', '-b', 'main']).status, 0);
+  writeFileSync(path.join(vault, 'unrelated.md'), 'unrelated\n');
+  assert.equal(git(vault, ['add', 'unrelated.md']).status, 0);
+  assert.equal(runMemo(root, [
+    'init',
+    '--language',
+    'en',
+    '--mode',
+    'local',
+    '--vault',
+    vault,
+    '--local-git-commit',
+    'enabled',
+  ]).status, 0);
+  const contentFile = path.join(root, 'exact.md');
+  writeFileSync(contentFile, 'exact body\n');
+  assert.equal(runMemo(root, ['write', '--session', 'exact-session', '--title', 'Exact Note', '--content-file', contentFile]).status, 0);
+
+  const result = runMemo(root, ['commit', '--session', 'exact-session', '--message', 'Add exact note']);
+
+  assert.equal(result.status, 0, result.stderr);
+  const committedFiles = git(vault, ['show', '--name-only', '--format=', 'HEAD']);
+  assert.equal(committedFiles.status, 0, committedFiles.stderr);
+  assert.match(committedFiles.stdout, /Notes\/\d{4}-\d{2}-\d{2}-exact-note\.md/);
+  assert.doesNotMatch(committedFiles.stdout, /unrelated\.md/);
+  const staged = git(vault, ['diff', '--cached', '--name-only']);
+  assert.match(staged.stdout, /unrelated\.md/);
+});
+
 test('local commit disabled refuses commit and local mode refuses push', () => {
   const root = makeTempRoot();
   const vault = makeVault(root);
@@ -386,4 +419,69 @@ test('abandon removes only manifest-listed draft and attachments', () => {
   assert.equal(existsSync(note), false);
   const manifest = readFileSync(path.join(root, 'memo-home', 'state', 'sessions', 'abandon-session.manifest'), 'utf8');
   assert.match(manifest, /ABANDONED='true'/);
+});
+
+test('write rejects notes directory symlink that escapes the vault', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  const outside = path.join(root, 'outside-notes');
+  mkdirSync(outside, { recursive: true });
+  symlinkSync(outside, path.join(vault, 'Notes'));
+
+  const result = runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /escapes vault/);
+  assert.equal(existsSync(path.join(outside, `${new Date().toISOString().slice(0, 10)}-symlink.md`)), false);
+});
+
+test('repeated session abandon cleans attachments from earlier revisions', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+  const first = path.join(root, 'first-attach.md');
+  const second = path.join(root, 'second-attach.md');
+  const secondAttachment = path.join(root, 'second.png');
+  writeFileSync(first, 'first attachment body\n');
+  writeFileSync(second, 'second attachment body\n');
+  writeFileSync(secondAttachment, 'second image\n');
+  assert.equal(runMemo(root, ['write', '--session', 'replace-session', '--title', 'Replace Note', '--content-file', first, '--attachment', attachmentFixture]).status, 0);
+  const firstAttachmentPath = path.join(vault, 'assets', new Date().getFullYear().toString(), String(new Date().getMonth() + 1).padStart(2, '0'), 'replace-note', 'image-1.png');
+  assert.equal(existsSync(firstAttachmentPath), true);
+  assert.equal(runMemo(root, ['write', '--session', 'replace-session', '--title', 'Replace Changed', '--content-file', second, '--attachment', secondAttachment]).status, 0);
+  const secondAttachmentPath = path.join(vault, 'assets', new Date().getFullYear().toString(), String(new Date().getMonth() + 1).padStart(2, '0'), 'replace-changed', 'image-1.png');
+  assert.equal(existsSync(secondAttachmentPath), true);
+
+  const result = runMemo(root, ['write', '--abandon', '--session', 'replace-session']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(firstAttachmentPath), false);
+  assert.equal(existsSync(secondAttachmentPath), false);
+});
+
+test('status reports attachment paths', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+  const contentFile = path.join(root, 'status-attachment.md');
+  writeFileSync(contentFile, 'status attachment body\n');
+  assert.equal(runMemo(root, ['write', '--session', 'status-attachment-session', '--title', 'Status Attachment', '--content-file', contentFile, '--attachment', attachmentFixture]).status, 0);
+
+  const result = runMemo(root, ['status', '--session', 'status-attachment-session']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Attachment 1:/);
+  assert.match(result.stdout, /image-1\.png/);
+});
+
+test('info uses persisted Chinese language preference', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'zh-CN', '--mode', 'local', '--vault', vault]).status, 0);
+
+  const result = runMemo(root, ['info']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /语言:/);
+  assert.match(result.stdout, /模式: local/);
 });

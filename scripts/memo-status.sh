@@ -25,8 +25,14 @@ printf 'Mode: %s\n' "$MEMO_MODE"
 printf 'Session: %s\n' "$SESSION_ID"
 printf 'Draft: %s\n' "$draft_abs"
 printf 'Attachments: %s\n' "$attachment_count"
+i=1
+while [ "$i" -le "$attachment_count" ]; do
+  attachment="$(memo_config_value "ATTACHMENT_ABS_$i" "$manifest" 2>/dev/null || printf '')"
+  [ -z "$attachment" ] || printf 'Attachment %s: %s\n' "$i" "$attachment"
+  i=$((i + 1))
+done
 
 if [ "$MEMO_MODE" = "remote" ]; then
-  printf 'Git diff:\n'
-  git -C "$MEMO_VAULT" diff --stat || true
+  printf 'Git status:\n'
+  git -C "$MEMO_VAULT" status --short || true
 fi

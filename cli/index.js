@@ -3,6 +3,9 @@ import { chooseLanguage, chooseMode, confirm, inputText } from './prompts.js';
 import { chooseTargets } from './prompts.js';
 import { runScript } from './run-script.js';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 const commands = [
   'init',
@@ -28,6 +31,20 @@ function printHelp(language = 'en') {
   console.log(t(language, 'commands'));
   for (const command of commands) {
     console.log(`  ${command.padEnd(longest)}  ${descriptions[command]}`);
+  }
+}
+
+function readConfiguredLanguage() {
+  if (process.env.MEMO_LANGUAGE) {
+    return process.env.MEMO_LANGUAGE;
+  }
+  const configPath = path.join(process.env.MEMO_HOME || path.join(os.homedir(), '.config', 'memo'), 'config');
+  try {
+    const config = readFileSync(configPath, 'utf8');
+    const match = config.match(/^MEMO_LANGUAGE='([^']*)'/m) || config.match(/^MEMO_LANGUAGE="?([^"\n]*)"?/m);
+    return match?.[1] || 'en';
+  } catch {
+    return 'en';
   }
 }
 
@@ -92,13 +109,41 @@ async function runInstall(args) {
   return status;
 }
 
+async function runConfig(args) {
+  if (args.length > 0) {
+    return forwardScript('memo-configure.sh', args);
+  }
+  const nextArgs = [];
+  const language = await chooseLanguage('Language');
+  nextArgs.push('--language', language);
+  const mode = await chooseMode('Mode');
+  nextArgs.push('--mode', mode);
+  const vault = await inputText('Obsidian vault path');
+  if (vault) {
+    nextArgs.push('--vault', vault);
+  }
+  const notesDir = await inputText('Notes directory', 'Notes');
+  if (notesDir) {
+    nextArgs.push('--notes-dir', notesDir);
+  }
+  const assetsDir = await inputText('Assets directory', 'assets');
+  if (assetsDir) {
+    nextArgs.push('--assets-dir', assetsDir);
+  }
+  if (mode === 'local') {
+    const enabled = await confirm('Enable local commit after confirmation?', false);
+    nextArgs.push('--local-git-commit', enabled ? 'enabled' : 'disabled');
+  }
+  return forwardScript('memo-configure.sh', nextArgs);
+}
+
 async function runPlaceholder(command, language) {
   console.error(t(language, 'notImplemented', { command }));
   return 2;
 }
 
 export async function main(argv = []) {
-  const language = process.env.MEMO_LANGUAGE || 'en';
+  const language = readConfiguredLanguage();
   const [command = 'help'] = argv;
 
   if (command === '--help' || command === '-h' || command === 'help') {
@@ -121,7 +166,7 @@ export async function main(argv = []) {
     return forwardScript('memo-info.sh', argv.slice(1));
   }
   if (command === 'config') {
-    return forwardScript('memo-configure.sh', argv.slice(1));
+    return runConfig(argv.slice(1));
   }
   if (command === 'install') {
     return runInstall(argv.slice(1));

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import test from 'node:test';
@@ -15,6 +16,18 @@ function runMemo(args = [], options = {}) {
     env: {
       ...process.env,
       ...options.env,
+    },
+  });
+}
+
+function runMemoWithHome(root, args = []) {
+  return spawnSync(process.execPath, [memoBin, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      HOME: `${root}/home`,
+      MEMO_HOME: `${root}/memo-home`,
     },
   });
 }
@@ -81,4 +94,18 @@ test('skill metadata exposes memo and runtime protocol covers confirmation gates
   assert.match(skill, /memo push/);
   assert.match(skill, /--abandon/);
   assert.match(skill, /Do not commit or push/i);
+});
+
+test('help uses persisted language preference after init', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'memo-cli-test-'));
+  const vault = path.join(root, 'vault');
+  mkdirSync(vault, { recursive: true });
+  const init = runMemoWithHome(root, ['init', '--language', 'zh-CN', '--mode', 'local', '--vault', vault]);
+  assert.equal(init.status, 0, init.stderr);
+
+  const help = runMemoWithHome(root, ['help']);
+
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /用法/);
+  assert.match(help.stdout, /命令/);
 });

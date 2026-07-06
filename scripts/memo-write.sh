@@ -33,6 +33,7 @@ if [ "$ABANDON" = "true" ]; then
   manifest="$MEMO_STATE_DIR/sessions/$SESSION_ID.manifest"
   [ -f "$manifest" ] || { memo_error "session manifest not found: $SESSION_ID"; exit 1; }
   draft_abs="$(memo_config_value DRAFT_ABS "$manifest")"
+  memo_require_file_parent_inside_vault "$draft_abs" "draft" || exit 1
   case "$draft_abs" in
     "$MEMO_VAULT"/*) [ ! -e "$draft_abs" ] || rm -f "$draft_abs" ;;
     *) memo_error "draft path escapes vault"; exit 1 ;;
@@ -43,7 +44,10 @@ if [ "$ABANDON" = "true" ]; then
     attachment="$(memo_config_value "ATTACHMENT_ABS_$i" "$manifest" 2>/dev/null || printf '')"
     if [ -n "$attachment" ]; then
       case "$attachment" in
-        "$MEMO_VAULT"/*) [ ! -e "$attachment" ] || rm -f "$attachment" ;;
+        "$MEMO_VAULT"/*)
+          memo_require_file_parent_inside_vault "$attachment" "attachment" || exit 1
+          [ ! -e "$attachment" ] || rm -f "$attachment"
+          ;;
         *) memo_error "attachment path escapes vault"; exit 1 ;;
       esac
     fi
@@ -98,12 +102,14 @@ case "$draft_abs" in
   "$MEMO_VAULT"/*) ;;
   *) memo_error "draft path escapes vault"; exit 1 ;;
 esac
+memo_require_file_parent_inside_vault "$draft_abs" "draft" || exit 1
 
 attachment_count=0
 attachment_abs_lines=""
 attachment_rel_lines=""
 link_file="$(mktemp)"
-cleanup_files="$link_file"
+combined_abs="$(mktemp)"
+combined_rel="$(mktemp)"
 
 notes_depth="$(printf '%s' "$MEMO_NOTES_DIR" | awk -F/ '{ print NF }')"
 rel_prefix=""
@@ -116,6 +122,7 @@ done
 if [ -n "$ATTACHMENTS" ]; then
   asset_dir="$MEMO_VAULT/$MEMO_ASSETS_DIR/$year/$month/$slug"
   mkdir -p "$asset_dir"
+  memo_require_physical_dir_inside_vault "$asset_dir" "Asset directory" || exit 1
   printf '%s\n' "$ATTACHMENTS" | while IFS= read -r attachment; do
     [ -n "$attachment" ] || continue
     [ -r "$attachment" ] || { memo_error "attachment is not readable: $attachment"; exit 1; }
@@ -131,6 +138,7 @@ if [ -n "$ATTACHMENTS" ]; then
       "$MEMO_VAULT"/*) ;;
       *) memo_error "attachment path escapes vault"; exit 1 ;;
     esac
+    memo_require_file_parent_inside_vault "$dest" "attachment" || exit 1
     cp "$attachment" "$dest"
     printf '![image-%s](%s%s)\n' "$index" "$rel_prefix" "$rel" >> "$link_file"
     printf '%s\n' "$dest" >> "$link_file.abs"
@@ -147,10 +155,33 @@ if [ -s "$link_file" ]; then
 fi
 mv "$tmp_note" "$draft_abs"
 
+if [ -f "$manifest" ]; then
+  old_count="$(memo_config_value ATTACHMENT_COUNT "$manifest" 2>/dev/null || printf 0)"
+  i=1
+  while [ "$i" -le "$old_count" ]; do
+    old_abs="$(memo_config_value "ATTACHMENT_ABS_$i" "$manifest" 2>/dev/null || printf '')"
+    old_rel="$(memo_config_value "ATTACHMENT_REL_$i" "$manifest" 2>/dev/null || printf '')"
+    if [ -n "$old_abs" ] && ! grep -Fqx "$old_abs" "$combined_abs"; then
+      printf '%s\n' "$old_abs" >> "$combined_abs"
+      printf '%s\n' "$old_rel" >> "$combined_rel"
+    fi
+    i=$((i + 1))
+  done
+fi
+
 if [ -f "$link_file.abs" ]; then
-  attachment_count="$(wc -l < "$link_file.abs" | tr -d ' ')"
-  attachment_abs_lines="$(cat "$link_file.abs")"
-  attachment_rel_lines="$(cat "$link_file.rel")"
+  paste "$link_file.abs" "$link_file.rel" | while IFS="$(printf '\t')" read -r new_abs new_rel; do
+    if [ -n "$new_abs" ] && ! grep -Fqx "$new_abs" "$combined_abs"; then
+      printf '%s\n' "$new_abs" >> "$combined_abs"
+      printf '%s\n' "$new_rel" >> "$combined_rel"
+    fi
+  done
+fi
+
+if [ -s "$combined_abs" ]; then
+  attachment_count="$(wc -l < "$combined_abs" | tr -d ' ')"
+  attachment_abs_lines="$(cat "$combined_abs")"
+  attachment_rel_lines="$(cat "$combined_rel")"
 fi
 
 mkdir -p "$MEMO_STATE_DIR/sessions"
@@ -181,7 +212,7 @@ tmp_manifest="${manifest}.$$"
 } > "$tmp_manifest"
 mv "$tmp_manifest" "$manifest"
 
-rm -f "$link_file" "$link_file.abs" "$link_file.rel"
+rm -f "$link_file" "$link_file.abs" "$link_file.rel" "$combined_abs" "$combined_rel"
 
 printf 'Session: %s\n' "$SESSION_ID"
 printf 'Draft: %s\n' "$draft_abs"
