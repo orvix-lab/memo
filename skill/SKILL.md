@@ -32,12 +32,32 @@ Use the reported mode:
 
 ## Write Draft
 
-Create the Markdown content requested by the user. Put any image files to archive in readable local paths.
+Create the Markdown content requested by the user. Every note must start with Obsidian YAML frontmatter:
+
+```md
+---
+title: <note title>
+created: <YYYY-MM-DD>
+tags:
+  - <tag>
+status: 待确认
+---
+```
+
+Choose concise, useful tags from the note content. Use `status: 待确认` until the user explicitly confirms the archive. Put any image files to archive in readable local paths.
+
+Check `memo info` for the Notes directory. If it reports `auto`, choose the best vault-relative Markdown path for the content, such as `项目调研/开源营销系统选型分析.md`, and pass it with `--path`. Do not use a placeholder folder named `auto`.
 
 Call:
 
 ```sh
 memo write --session <session-id> --title <title> --content-file <markdown-file> [--attachment <path> ...]
+```
+
+When Notes directory is `auto`, call:
+
+```sh
+memo write --session <session-id> --title <title> --path <vault-relative.md> --content-file <markdown-file> [--attachment <path> ...]
 ```
 
 Use the same session id for all revisions of the same requested note. If the user asks for changes before confirmation, regenerate the Markdown and call `memo write` again with the same session id. This updates the same draft and session manifest instead of creating a new draft.

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import test from 'node:test';
+import { initBanner, modeChoices, notesDirectoryChoices } from '../cli/prompts.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const memoBin = path.join(repoRoot, 'bin', 'memo');
@@ -15,6 +16,8 @@ function runMemo(args = [], options = {}) {
     encoding: 'utf8',
     env: {
       ...process.env,
+      MEMO_HOME: path.join(tmpdir(), `memo-cli-empty-home-${process.pid}`),
+      MEMO_LANGUAGE: 'en',
       ...options.env,
     },
   });
@@ -88,12 +91,33 @@ test('skill metadata exposes memo and runtime protocol covers confirmation gates
   assert.match(skill, /remote mode/i);
   assert.match(skill, /local mode/i);
   assert.match(skill, /memo write/);
+  assert.match(skill, /--path/);
+  assert.match(skill, /title/);
+  assert.match(skill, /created/);
+  assert.match(skill, /tags/);
+  assert.match(skill, /status/);
   assert.match(skill, /same session/i);
   assert.match(skill, /explicit confirmation/i);
   assert.match(skill, /memo commit --session/);
   assert.match(skill, /memo push/);
   assert.match(skill, /--abandon/);
   assert.match(skill, /Do not commit or push/i);
+});
+
+test('init prompt helpers expose banner, mode explanations, and Auto notes option', () => {
+  assert.match(initBanner(), /██/);
+  assert.match(initBanner(), /MEMO/);
+
+  const modes = modeChoices('en');
+  assert.equal(modes[0].value, 'local');
+  assert.match(modes[0].name, /no pull\/push/i);
+  assert.equal(modes[1].value, 'remote');
+  assert.match(modes[1].name, /pull --ff-only/i);
+
+  const notes = notesDirectoryChoices('en');
+  assert.equal(notes[0].value, 'auto');
+  assert.match(notes[0].name, /recommended/i);
+  assert.equal(notes[1].value, 'custom');
 });
 
 test('help uses persisted language preference after init', () => {

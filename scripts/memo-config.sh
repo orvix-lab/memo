@@ -91,6 +91,22 @@ memo_validate_relative_dir() {
   return 0
 }
 
+memo_validate_relative_md_path() {
+  value="$1"
+  label="$2"
+  case "$value" in
+    ""|/*|~*|*..*|*:*|*\\*|*/)
+      memo_error "$label must be a vault-relative Markdown path: $value"
+      return 1
+      ;;
+    *.md) return 0 ;;
+    *)
+      memo_error "$label must end with .md: $value"
+      return 1
+      ;;
+  esac
+}
+
 memo_vault_realpath() {
   [ -d "$1" ] || return 1
   (cd "$1" 2>/dev/null && pwd -P)
@@ -113,6 +129,33 @@ memo_require_file_parent_inside_vault() {
   memo_require_physical_dir_inside_vault "$parent" "$label parent" || return 1
 }
 
+memo_ensure_relative_dir_inside_vault() {
+  rel="$1"
+  label="$2"
+  case "$rel" in
+    ""|.) return 0 ;;
+  esac
+  memo_validate_relative_dir "$rel" "$label" || return 1
+
+  current="$MEMO_VAULT"
+  remaining="$rel"
+  while [ -n "$remaining" ]; do
+    component="${remaining%%/*}"
+    if [ "$component" = "$remaining" ]; then
+      remaining=""
+    else
+      remaining="${remaining#*/}"
+    fi
+    current="$current/$component"
+    if [ -e "$current" ]; then
+      memo_require_physical_dir_inside_vault "$current" "$label" || return 1
+    else
+      mkdir "$current" || return 1
+      memo_require_physical_dir_inside_vault "$current" "$label" || return 1
+    fi
+  done
+}
+
 memo_validate_vault() {
   [ -n "$MEMO_VAULT" ] || { memo_error "Vault path is required."; return 1; }
   [ -d "$MEMO_VAULT" ] || { memo_error "Vault path does not exist: $MEMO_VAULT"; return 1; }
@@ -121,12 +164,13 @@ memo_validate_vault() {
 }
 
 memo_prepare_vault_dirs() {
-  memo_validate_relative_dir "$MEMO_NOTES_DIR" "Notes directory" || return 1
-  memo_validate_relative_dir "$MEMO_ASSETS_DIR" "Assets directory" || return 1
-  mkdir -p "$MEMO_VAULT/$MEMO_NOTES_DIR" "$MEMO_VAULT/$MEMO_ASSETS_DIR" || return 1
-  memo_require_physical_dir_inside_vault "$MEMO_VAULT/$MEMO_NOTES_DIR" "Notes directory" || return 1
-  memo_require_physical_dir_inside_vault "$MEMO_VAULT/$MEMO_ASSETS_DIR" "Assets directory" || return 1
-  [ -w "$MEMO_VAULT/$MEMO_NOTES_DIR" ] || { memo_error "Notes directory is not writable."; return 1; }
+  if [ "$MEMO_NOTES_DIR" != "auto" ]; then
+    memo_ensure_relative_dir_inside_vault "$MEMO_NOTES_DIR" "Notes directory" || return 1
+  fi
+  memo_ensure_relative_dir_inside_vault "$MEMO_ASSETS_DIR" "Assets directory" || return 1
+  if [ "$MEMO_NOTES_DIR" != "auto" ]; then
+    [ -w "$MEMO_VAULT/$MEMO_NOTES_DIR" ] || { memo_error "Notes directory is not writable."; return 1; }
+  fi
   [ -w "$MEMO_VAULT/$MEMO_ASSETS_DIR" ] || { memo_error "Assets directory is not writable."; return 1; }
 }
 

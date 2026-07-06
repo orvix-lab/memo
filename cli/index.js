@@ -1,5 +1,5 @@
 import { commandDescriptions, t } from './i18n.js';
-import { chooseLanguage, chooseMode, confirm, inputText } from './prompts.js';
+import { chooseInstallTarget, chooseLanguage, chooseMode, chooseNotesDirectory, confirm, initBanner, inputText } from './prompts.js';
 import { chooseTargets } from './prompts.js';
 import { runScript } from './run-script.js';
 import { spawnSync } from 'node:child_process';
@@ -62,18 +62,26 @@ async function runInit(args) {
   if (args.length > 0) {
     return forwardScript('memo-init.sh', args);
   }
+  console.log(initBanner());
   const nextArgs = [...args];
+  let language = optionValue(nextArgs, '--language');
   if (!optionValue(nextArgs, '--language')) {
-    nextArgs.push('--language', await chooseLanguage('Language'));
+    language = await chooseLanguage('Language');
+    nextArgs.push('--language', language);
   }
   if (!optionValue(nextArgs, '--mode')) {
-    nextArgs.push('--mode', await chooseMode('Mode'));
+    nextArgs.push('--mode', await chooseMode('Mode', language));
   }
   if (!optionValue(nextArgs, '--vault')) {
     nextArgs.push('--vault', await inputText('Obsidian vault path'));
   }
   if (!optionValue(nextArgs, '--notes-dir')) {
-    nextArgs.push('--notes-dir', await inputText('Notes directory', 'Notes'));
+    const notesStrategy = await chooseNotesDirectory('Notes directory', language);
+    if (notesStrategy === 'auto') {
+      nextArgs.push('--notes-dir', 'auto');
+    } else {
+      nextArgs.push('--notes-dir', await inputText('Custom notes folder', 'Notes'));
+    }
   }
   if (!optionValue(nextArgs, '--assets-dir')) {
     nextArgs.push('--assets-dir', await inputText('Assets directory', 'assets'));
@@ -90,6 +98,9 @@ async function runInit(args) {
     } else {
       nextArgs.push('--local-git-commit', 'disabled');
     }
+  }
+  if (!optionValue(nextArgs, '--install-target')) {
+    nextArgs.push('--install-target', await chooseInstallTarget('Install memo into', language));
   }
   return forwardScript('memo-init.sh', nextArgs);
 }
@@ -116,7 +127,7 @@ async function runConfig(args) {
   const nextArgs = [];
   const language = await chooseLanguage('Language');
   nextArgs.push('--language', language);
-  const mode = await chooseMode('Mode');
+  const mode = await chooseMode('Mode', language);
   nextArgs.push('--mode', mode);
   const vault = await inputText('Obsidian vault path');
   if (vault) {

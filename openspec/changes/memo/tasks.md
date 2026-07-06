@@ -57,3 +57,15 @@
 - [x] 7.2 添加 Codex 发现所需 metadata，并确保 skill name 为 `memo`。
 - [x] 7.3 增加 CLI 测试或 smoke check，覆盖 help/info/config、init 语言选择、`@inquirer/prompts` 交互封装、本地模式、本地 commit 偏好、远端模式失败、doctor readiness、write 路径安全、附件复制和 commit gating。
 - [x] 7.4 对照 OpenSpec requirements 验证 CLI 和 skill 行为。
+
+## 8. 初始化体验与 Auto 笔记路径补充
+
+- [x] 8.1 在交互式 `memo init` 开始时展示 ASCII `MEMO` banner。
+- [x] 8.2 在模式选择选项中用括号解释 local 和 remote 的含义。
+- [x] 8.3 将 notes directory 交互改为 Auto（推荐）或自定义固定目录。
+- [x] 8.4 在 init 中加入 Codex、Claude Code、暂时跳过的 skill 安装步骤。
+- [x] 8.5 支持 `memo write --path <vault-relative.md>`，并在 `MEMO_NOTES_DIR=auto` 时要求提供 `--path`。
+- [x] 8.6 更新 `$memo` skill 协议，要求 Auto 模式由模型选择目标路径，并要求 Markdown 包含 title、created、tags、status frontmatter。
+- [x] 8.7 增加回归测试覆盖 banner、模式说明、Auto 写入路径、init 安装跳过和 frontmatter 协议。
+
+<!-- review skipped: subagent dispatch unavailable without explicit user request in this runtime -->

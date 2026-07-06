@@ -485,3 +485,65 @@ test('info uses persisted Chinese language preference', () => {
   assert.match(result.stdout, /语言:/);
   assert.match(result.stdout, /模式: local/);
 });
+
+test('init can persist auto notes directory and skip install targets', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+
+  const init = runMemo(root, [
+    'init',
+    '--language',
+    'en',
+    '--mode',
+    'local',
+    '--vault',
+    vault,
+    '--notes-dir',
+    'auto',
+    '--install-target',
+    'skip',
+  ]);
+
+  assert.equal(init.status, 0, init.stderr);
+  const config = readFileSync(path.join(root, 'memo-home', 'config'), 'utf8');
+  assert.match(config, /MEMO_NOTES_DIR='auto'/);
+  assert.match(config, /MEMO_CONFIRMED_INSTALL_TARGETS=''/);
+});
+
+test('auto notes mode requires write --path', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault, '--notes-dir', 'auto']).status, 0);
+  const contentFile = path.join(root, 'auto.md');
+  writeFileSync(contentFile, 'auto body\n');
+
+  const result = runMemo(root, ['write', '--session', 'auto-missing', '--title', 'Auto Missing', '--content-file', contentFile]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--path/);
+});
+
+test('auto notes mode writes to caller-provided vault-relative path', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault, '--notes-dir', 'auto']).status, 0);
+  const contentFile = path.join(root, 'auto-path.md');
+  writeFileSync(contentFile, 'auto path body\n');
+
+  const result = runMemo(root, [
+    'write',
+    '--session',
+    'auto-path',
+    '--title',
+    'Ignored Title',
+    '--path',
+    '项目调研/开源营销系统选型分析.md',
+    '--content-file',
+    contentFile,
+  ]);
+
+  assert.equal(result.status, 0, result.stderr);
+  const note = path.join(vault, '项目调研', '开源营销系统选型分析.md');
+  assert.equal(existsSync(note), true);
+  assert.equal(readFileSync(note, 'utf8'), 'auto path body\n');
+});

@@ -6,6 +6,7 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
 
 SESSION_ID=""
 TITLE=""
+TARGET_PATH=""
 CONTENT_FILE=""
 ATTACHMENTS=""
 ABANDON="false"
@@ -15,6 +16,7 @@ while [ "$#" -gt 0 ]; do
     --abandon) ABANDON="true"; shift ;;
     --session) SESSION_ID="$2"; shift 2 ;;
     --title) TITLE="$2"; shift 2 ;;
+    --path) TARGET_PATH="$2"; shift 2 ;;
     --content-file) CONTENT_FILE="$2"; shift 2 ;;
     --attachment)
       ATTACHMENTS="${ATTACHMENTS}${ATTACHMENTS:+
@@ -86,22 +88,33 @@ if [ -f "$manifest" ]; then
   draft_abs="$(memo_config_value DRAFT_ABS "$manifest")"
   draft_rel="$(memo_config_value DRAFT_REL "$manifest")"
 else
-  base="$today-$slug.md"
-  draft_abs="$MEMO_VAULT/$MEMO_NOTES_DIR/$base"
-  draft_rel="$MEMO_NOTES_DIR/$base"
-  n=2
-  while [ -e "$draft_abs" ]; do
-    base="$today-$slug-$n.md"
+  if [ -n "$TARGET_PATH" ]; then
+    memo_validate_relative_md_path "$TARGET_PATH" "draft path" || exit 1
+    draft_rel="$TARGET_PATH"
+    draft_abs="$MEMO_VAULT/$draft_rel"
+  elif [ "$MEMO_NOTES_DIR" = "auto" ]; then
+    memo_error "memo write requires --path <vault-relative.md> when notes directory is auto"
+    exit 2
+  else
+    base="$today-$slug.md"
     draft_abs="$MEMO_VAULT/$MEMO_NOTES_DIR/$base"
     draft_rel="$MEMO_NOTES_DIR/$base"
-    n=$((n + 1))
-  done
+    n=2
+    while [ -e "$draft_abs" ]; do
+      base="$today-$slug-$n.md"
+      draft_abs="$MEMO_VAULT/$MEMO_NOTES_DIR/$base"
+      draft_rel="$MEMO_NOTES_DIR/$base"
+      n=$((n + 1))
+    done
+  fi
 fi
 
 case "$draft_abs" in
   "$MEMO_VAULT"/*) ;;
   *) memo_error "draft path escapes vault"; exit 1 ;;
 esac
+draft_parent_rel="$(dirname "$draft_rel")"
+memo_ensure_relative_dir_inside_vault "$draft_parent_rel" "draft directory" || exit 1
 memo_require_file_parent_inside_vault "$draft_abs" "draft" || exit 1
 
 attachment_count=0
@@ -111,7 +124,12 @@ link_file="$(mktemp)"
 combined_abs="$(mktemp)"
 combined_rel="$(mktemp)"
 
-notes_depth="$(printf '%s' "$MEMO_NOTES_DIR" | awk -F/ '{ print NF }')"
+draft_dir="$(dirname "$draft_rel")"
+if [ "$draft_dir" = "." ]; then
+  notes_depth=0
+else
+  notes_depth="$(printf '%s' "$draft_dir" | awk -F/ '{ print NF }')"
+fi
 rel_prefix=""
 i=1
 while [ "$i" -le "$notes_depth" ]; do
@@ -120,8 +138,9 @@ while [ "$i" -le "$notes_depth" ]; do
 done
 
 if [ -n "$ATTACHMENTS" ]; then
-  asset_dir="$MEMO_VAULT/$MEMO_ASSETS_DIR/$year/$month/$slug"
-  mkdir -p "$asset_dir"
+  asset_rel_dir="$MEMO_ASSETS_DIR/$year/$month/$slug"
+  memo_ensure_relative_dir_inside_vault "$asset_rel_dir" "Asset directory" || exit 1
+  asset_dir="$MEMO_VAULT/$asset_rel_dir"
   memo_require_physical_dir_inside_vault "$asset_dir" "Asset directory" || exit 1
   printf '%s\n' "$ATTACHMENTS" | while IFS= read -r attachment; do
     [ -n "$attachment" ] || continue

@@ -14,6 +14,7 @@ MEMO_GIT_REMOTE=""
 MEMO_GIT_BRANCH=""
 MEMO_LOCAL_GIT_COMMIT="disabled"
 MEMO_CONFIRMED_INSTALL_TARGETS=""
+INSTALL_TARGET=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -25,6 +26,7 @@ while [ "$#" -gt 0 ]; do
     --remote) MEMO_GIT_REMOTE="$2"; shift 2 ;;
     --branch) MEMO_GIT_BRANCH="$2"; shift 2 ;;
     --local-git-commit) MEMO_LOCAL_GIT_COMMIT="$2"; shift 2 ;;
+    --install-target) INSTALL_TARGET="$2"; shift 2 ;;
     *) memo_error "Unknown init option: $1"; exit 2 ;;
   esac
 done
@@ -50,5 +52,18 @@ case "$MEMO_MODE" in
     ;;
 esac
 
+case "$INSTALL_TARGET" in
+  ""|skip|codex|claude) ;;
+  *) memo_error "Invalid install target: $INSTALL_TARGET"; exit 2 ;;
+esac
+
 memo_write_config
+
+case "$INSTALL_TARGET" in
+  ""|skip) ;;
+  codex|claude)
+    "$SCRIPT_DIR/memo-install.sh" --target "$INSTALL_TARGET" >/dev/null
+    ;;
+esac
+
 printf 'memo initialized: %s\n' "$MEMO_CONFIG"
