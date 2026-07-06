@@ -53,7 +53,7 @@
 
 ## 7. Skill 指令与验证
 
-- [ ] 7.1 编写 `skill/SKILL.md`，明确 `$memo` 按 local/remote 模式分支执行：doctor、可选 pull、write、report、等待确认、可选本地 commit、远端 commit/push。
-- [ ] 7.2 添加 Codex 发现所需 metadata，并确保 skill name 为 `memo`。
-- [ ] 7.3 增加 CLI 测试或 smoke check，覆盖 help/info/config、init 语言选择、`@inquirer/prompts` 交互封装、本地模式、本地 commit 偏好、远端模式失败、doctor readiness、write 路径安全、附件复制和 commit gating。
-- [ ] 7.4 对照 OpenSpec requirements 验证 CLI 和 skill 行为。
+- [x] 7.1 编写 `skill/SKILL.md`，明确 `$memo` 按 local/remote 模式分支执行：doctor、可选 pull、write、report、等待确认、可选本地 commit、远端 commit/push。
+- [x] 7.2 添加 Codex 发现所需 metadata，并确保 skill name 为 `memo`。
+- [x] 7.3 增加 CLI 测试或 smoke check，覆盖 help/info/config、init 语言选择、`@inquirer/prompts` 交互封装、本地模式、本地 commit 偏好、远端模式失败、doctor readiness、write 路径安全、附件复制和 commit gating。
+- [x] 7.4 对照 OpenSpec requirements 验证 CLI 和 skill 行为。
