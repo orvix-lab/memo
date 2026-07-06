@@ -302,3 +302,88 @@ test('status reports current draft and local mode', () => {
   assert.match(result.stdout, /Draft:/);
   assert.doesNotMatch(result.stdout, /push/);
 });
+
+test('local commit enabled commits confirmed draft and attachments', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(git(vault, ['init']).status, 0);
+  assert.equal(git(vault, ['checkout', '-b', 'main']).status, 0);
+  assert.equal(runMemo(root, [
+    'init',
+    '--language',
+    'en',
+    '--mode',
+    'local',
+    '--vault',
+    vault,
+    '--local-git-commit',
+    'enabled',
+  ]).status, 0);
+  const contentFile = path.join(root, 'commit.md');
+  writeFileSync(contentFile, 'commit body\n');
+  assert.equal(runMemo(root, [
+    'write',
+    '--session',
+    'commit-session',
+    '--title',
+    'Commit Note',
+    '--content-file',
+    contentFile,
+    '--attachment',
+    attachmentFixture,
+  ]).status, 0);
+
+  const result = runMemo(root, ['commit', '--session', 'commit-session', '--message', 'Add commit note']);
+
+  assert.equal(result.status, 0, result.stderr);
+  const log = git(vault, ['log', '--oneline', '-1']);
+  assert.equal(log.status, 0, log.stderr);
+  assert.match(log.stdout, /Add commit note/);
+  const manifest = readFileSync(path.join(root, 'memo-home', 'state', 'sessions', 'commit-session.manifest'), 'utf8');
+  assert.match(manifest, /ARCHIVED='true'/);
+});
+
+test('local commit disabled refuses commit and local mode refuses push', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+  const contentFile = path.join(root, 'no-commit.md');
+  writeFileSync(contentFile, 'no commit body\n');
+  assert.equal(runMemo(root, ['write', '--session', 'no-commit-session', '--title', 'No Commit', '--content-file', contentFile]).status, 0);
+
+  const commit = runMemo(root, ['commit', '--session', 'no-commit-session', '--message', 'No commit']);
+  assert.notEqual(commit.status, 0);
+  assert.match(commit.stderr, /Local commit is disabled/);
+
+  const push = runMemo(root, ['push']);
+  assert.notEqual(push.status, 0);
+  assert.match(push.stderr, /remote mode/);
+});
+
+test('abandon removes only manifest-listed draft and attachments', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+  const contentFile = path.join(root, 'abandon.md');
+  writeFileSync(contentFile, 'abandon body\n');
+  assert.equal(runMemo(root, [
+    'write',
+    '--session',
+    'abandon-session',
+    '--title',
+    'Abandon Note',
+    '--content-file',
+    contentFile,
+    '--attachment',
+    attachmentFixture,
+  ]).status, 0);
+  const note = path.join(vault, 'Notes', `${new Date().toISOString().slice(0, 10)}-abandon-note.md`);
+  assert.equal(existsSync(note), true);
+
+  const result = runMemo(root, ['write', '--abandon', '--session', 'abandon-session']);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(note), false);
+  const manifest = readFileSync(path.join(root, 'memo-home', 'state', 'sessions', 'abandon-session.manifest'), 'utf8');
+  assert.match(manifest, /ABANDONED='true'/);
+});

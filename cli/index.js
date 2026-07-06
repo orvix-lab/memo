@@ -132,6 +132,12 @@ export async function main(argv = []) {
   if (command === 'status') {
     return forwardScript('memo-status.sh', argv.slice(1));
   }
+  if (command === 'commit') {
+    return forwardScript('memo-commit.sh', argv.slice(1));
+  }
+  if (command === 'push') {
+    return forwardScript('memo-push.sh', argv.slice(1));
+  }
 
   const status = await runPlaceholder(command, language);
   process.exitCode = status;

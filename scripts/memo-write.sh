@@ -8,9 +8,11 @@ SESSION_ID=""
 TITLE=""
 CONTENT_FILE=""
 ATTACHMENTS=""
+ABANDON="false"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --abandon) ABANDON="true"; shift ;;
     --session) SESSION_ID="$2"; shift 2 ;;
     --title) TITLE="$2"; shift 2 ;;
     --content-file) CONTENT_FILE="$2"; shift 2 ;;
@@ -22,6 +24,40 @@ while [ "$#" -gt 0 ]; do
     *) memo_error "Unknown write option: $1"; exit 2 ;;
   esac
 done
+
+if [ "$ABANDON" = "true" ]; then
+  [ -n "$SESSION_ID" ] || { memo_error "session is required"; exit 2; }
+  memo_load_config
+  [ "$MEMO_INITIALIZED" = "true" ] || { memo_error "memo is not initialized. Run memo init first."; exit 1; }
+  memo_validate_vault
+  manifest="$MEMO_STATE_DIR/sessions/$SESSION_ID.manifest"
+  [ -f "$manifest" ] || { memo_error "session manifest not found: $SESSION_ID"; exit 1; }
+  draft_abs="$(memo_config_value DRAFT_ABS "$manifest")"
+  case "$draft_abs" in
+    "$MEMO_VAULT"/*) [ ! -e "$draft_abs" ] || rm -f "$draft_abs" ;;
+    *) memo_error "draft path escapes vault"; exit 1 ;;
+  esac
+  attachment_count="$(memo_config_value ATTACHMENT_COUNT "$manifest" 2>/dev/null || printf 0)"
+  i=1
+  while [ "$i" -le "$attachment_count" ]; do
+    attachment="$(memo_config_value "ATTACHMENT_ABS_$i" "$manifest" 2>/dev/null || printf '')"
+    if [ -n "$attachment" ]; then
+      case "$attachment" in
+        "$MEMO_VAULT"/*) [ ! -e "$attachment" ] || rm -f "$attachment" ;;
+        *) memo_error "attachment path escapes vault"; exit 1 ;;
+      esac
+    fi
+    i=$((i + 1))
+  done
+  tmp="${manifest}.$$"
+  awk '
+    /^ABANDONED=/ { print "ABANDONED='\''true'\''"; next }
+    { print }
+  ' "$manifest" > "$tmp"
+  mv "$tmp" "$manifest"
+  printf 'Abandoned session: %s\n' "$SESSION_ID"
+  exit 0
+fi
 
 [ -n "$TITLE" ] || { memo_error "title is required"; exit 2; }
 [ -n "$CONTENT_FILE" ] || { memo_error "content file is required"; exit 2; }
