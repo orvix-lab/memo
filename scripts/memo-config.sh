@@ -236,3 +236,16 @@ memo_validate_ready() {
     remote) memo_validate_remote_git ;;
   esac
 }
+
+memo_validate_ready_without_remote_pull() {
+  memo_load_config
+  [ "$MEMO_INITIALIZED" = "true" ] || { memo_error "memo is not initialized. Run memo init first."; return 1; }
+  memo_validate_language "$MEMO_LANGUAGE" || return 1
+  memo_validate_mode "$MEMO_MODE" || return 1
+  memo_validate_vault || return 1
+  memo_prepare_vault_dirs || return 1
+  case "$MEMO_MODE" in
+    local) memo_validate_local_git_commit ;;
+    remote) memo_require_remote_git_config ;;
+  esac
+}

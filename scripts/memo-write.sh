@@ -70,7 +70,7 @@ fi
 [ -f "$CONTENT_FILE" ] || { memo_error "content file is missing: $CONTENT_FILE"; exit 1; }
 [ -s "$CONTENT_FILE" ] || { memo_error "content is empty"; exit 1; }
 
-memo_validate_ready
+memo_validate_ready_without_remote_pull
 
 case "$SESSION_ID" in
   "") SESSION_ID="$(date +%Y%m%d%H%M%S)-$$" ;;

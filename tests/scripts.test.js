@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, renameSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -588,4 +588,52 @@ test('sync pulls remote changes into a remote-mode vault', () => {
   assert.equal(sync.status, 0, sync.stderr);
   assert.match(sync.stdout, /memo synced/);
   assert.equal(readFileSync(path.join(vault, 'Remote.md'), 'utf8'), 'remote update\n');
+});
+
+test('remote write does not perform a second pull after readiness checks', () => {
+  const root = makeTempRoot();
+  const origin = path.join(root, 'origin.git');
+  const seed = path.join(root, 'seed');
+  const vault = path.join(root, 'vault');
+
+  assert.equal(git(root, ['init', '--bare', origin]).status, 0);
+  assert.equal(git(root, ['clone', origin, seed]).status, 0);
+  assert.equal(git(seed, ['checkout', '-b', 'main']).status, 0);
+  writeFileSync(path.join(seed, 'README.md'), 'initial\n');
+  assert.equal(git(seed, ['add', 'README.md']).status, 0);
+  assert.equal(git(seed, ['commit', '-m', 'Initial']).status, 0);
+  assert.equal(git(seed, ['push', 'origin', 'main']).status, 0);
+  assert.equal(git(root, ['clone', '--branch', 'main', origin, vault]).status, 0);
+
+  const init = runMemo(root, [
+    'init',
+    '--language',
+    'en',
+    '--mode',
+    'remote',
+    '--vault',
+    vault,
+    '--remote',
+    'origin',
+    '--branch',
+    'main',
+  ]);
+  assert.equal(init.status, 0, init.stderr);
+
+  renameSync(origin, path.join(root, 'origin-offline.git'));
+  const contentFile = path.join(root, 'remote-write.md');
+  writeFileSync(contentFile, 'remote write body\n');
+
+  const result = runMemo(root, [
+    'write',
+    '--session',
+    'remote-write',
+    '--title',
+    'Remote Write',
+    '--content-file',
+    contentFile,
+  ]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(path.join(vault, 'Notes', `${new Date().toISOString().slice(0, 10)}-remote-write.md`)), true);
 });
