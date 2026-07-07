@@ -4,7 +4,7 @@
   "description": "Archive AI-generated notes and attachments into an Obsidian vault.",
   "type": "module",
   "bin": {
-    "memo": "./bin/memo"
+    "memo": "bin/memo"
   },
   "files": [
     "bin",
@@ -23,5 +23,19 @@
   "engines": {
     "node": ">=20"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orvix-lab/memo.git"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/orvix-lab/memo/issues"
+  },
+  "homepage": "https://github.com/orvix-lab/memo#readme"
 }
