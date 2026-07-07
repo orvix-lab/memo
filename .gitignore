@@ -26,3 +26,6 @@ temp/
 .codex/
 .comet/
 
+# Local planning/workflow artifacts
+docs/superpowers/
+openspec/changes/
