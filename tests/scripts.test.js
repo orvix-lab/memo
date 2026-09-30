@@ -731,7 +731,7 @@ test('spec sync mirrors an OpenSpec change and preserves notes', () => {
   const openspecRoot = path.join(root, 'openspec');
   const change = path.join(openspecRoot, 'changes', 'sample-change');
   mkdirSync(path.join(change, 'specs', 'sample-capability'), { recursive: true });
-  writeFileSync(path.join(change, 'proposal.md'), '# Proposal\n');
+  writeFileSync(path.join(change, 'proposal.md'), '---\nmemo:\n  summary: Synchronize a test change into the vault.\n  projects:\n    - name: memo\n      branch: feature/test-sync\n    - name: docs\n---\n\n# Proposal\n\n## Why\n\nFallback summary.\n');
   writeFileSync(path.join(change, 'design.md'), '# Design\n');
   writeFileSync(path.join(change, 'tasks.md'), '# Tasks\n\n- [x] 1.1 Done\n- [ ] 1.2 Todo\n');
   writeFileSync(path.join(change, 'specs', 'sample-capability', 'spec.md'), '# Spec Delta\n');
@@ -746,6 +746,9 @@ test('spec sync mirrors an OpenSpec change and preserves notes', () => {
   assert.match(readme, /spec_tasks_completed: 1/);
   assert.match(readme, /spec_tasks_total: 2/);
   assert.match(readme, /spec_stage: "实施中"/);
+  assert.match(readme, /spec_summary: "Synchronize a test change into the vault\."/);
+  assert.match(readme, /spec_projects: "memo、docs"/);
+  assert.match(readme, /spec_project_branches: "memo → feature\/test-sync；docs → 未声明"/);
 
   writeFileSync(path.join(mirror, 'notes.md'), '# Personal note\n');
   writeFileSync(path.join(change, 'tasks.md'), '# Tasks\n\n- [x] 1.1 Done\n- [x] 1.2 Todo\n');
@@ -755,6 +758,8 @@ test('spec sync mirrors an OpenSpec change and preserves notes', () => {
   const state = JSON.parse(readFileSync(path.join(mirror, 'sync-state.json'), 'utf8'));
   assert.equal(state.tasks.completed, 2);
   assert.equal(state.stage, '待归档');
+  assert.equal(state.summary, 'Synchronize a test change into the vault.');
+  assert.deepEqual(state.projects, [{ name: 'memo', branch: 'feature/test-sync' }, { name: 'docs', branch: '未声明' }]);
 });
 
 test('spec sync rejects missing source path', () => {
@@ -764,4 +769,24 @@ test('spec sync rejects missing source path', () => {
   const result = runMemo(root, ['spec', 'sync', '--change', 'sample-change', '--from-path', path.join(root, 'missing')]);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /source path does not exist/);
+});
+
+test('spec sync falls back to proposal Why and does not infer missing projects', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  const openspecRoot = path.join(root, 'openspec');
+  const change = path.join(openspecRoot, 'changes', 'fallback-change');
+  mkdirSync(path.join(change, 'specs', 'sample-capability'), { recursive: true });
+  writeFileSync(path.join(change, 'proposal.md'), '# Proposal\n\n## Why\n\nFallback task summary from Why.\n\n## What Changes\n\nNo project declaration.\n');
+  writeFileSync(path.join(change, 'design.md'), '# Design\n');
+  writeFileSync(path.join(change, 'tasks.md'), '# Tasks\n\n- [ ] 1.1 Todo\n');
+  writeFileSync(path.join(change, 'specs', 'sample-capability', 'spec.md'), '# Spec Delta\n');
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+
+  const result = runMemo(root, ['spec', 'sync', '--change', 'fallback-change', '--from-path', openspecRoot]);
+  assert.equal(result.status, 0, result.stderr);
+  const readme = readFileSync(path.join(vault, '30-方案与需求', 'openspec', 'fallback-change', 'README.md'), 'utf8');
+  assert.match(readme, /spec_summary: "Fallback task summary from Why\."/);
+  assert.match(readme, /spec_projects: "未声明"/);
+  assert.match(readme, /spec_project_branches: "未声明"/);
 });
