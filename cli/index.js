@@ -15,6 +15,7 @@ const commands = [
   'write',
   'status',
   'sync',
+  'spec',
   'info',
   'commit',
   'push',
@@ -191,6 +192,9 @@ export async function main(argv = []) {
   }
   if (command === 'sync') {
     return forwardScript('memo-sync.sh', argv.slice(1));
+  }
+  if (command === 'spec') {
+    return forwardScript('memo-spec.sh', argv.slice(1));
   }
   if (command === 'commit') {
     return forwardScript('memo-commit.sh', argv.slice(1));

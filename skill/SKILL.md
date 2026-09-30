@@ -37,6 +37,18 @@ Use the reported mode:
 - In local mode, do not run remote validation, `git pull`, or `memo push`.
 - In remote mode, `memo doctor --quiet` performs the configured fast-forward-only pull before writing. If it fails, try `memo sync` once, then rerun `memo doctor --quiet`.
 
+## 受管理长期知识归档
+
+归档长期知识前，读取 Vault 根目录的 `知识库规范.md` 和 `knowledge-base.yml`。用知识库 MCP 按标题、项目名和核心术语检索已有主笔记；已有主题优先更新或使用 `related` 关联，大范围改写或移动前请求用户确认。Skill 只执行 Vault 中的规则，不复制目录、路由或字段枚举。
+
+长期知识必须使用规则要求的完整 Frontmatter 和正文结构。选择规则确定的 Vault 相对路径；无法可靠分类时进入 `90-收件箱` 且使用 `status: 待确认`。调用受管理写入：
+
+```sh
+memo write --managed --session <session-id> --title <title> --path <vault-relative.md> --content-file <markdown-file> [--attachment <path> ...]
+```
+
+`--managed` 会校验治理文件、必填 Frontmatter、一级标题、标签数量、正文结构和受管理目录。缺少治理文件时运行 `memo init`，它只补充缺失的可编辑示例，绝不覆盖已有规则文件。
+
 ## Write Draft
 
 Create the Markdown content requested by the user. Every note must start with Obsidian YAML frontmatter:
@@ -66,6 +78,8 @@ When Notes directory is `auto`, call:
 ```sh
 memo write --session <session-id> --title <title> --path <vault-relative.md> --content-file <markdown-file> [--attachment <path> ...]
 ```
+
+For a rule-governed long-term knowledge note, use the `--managed` command documented above instead of this general write mode.
 
 Use the same session id for all revisions of the same requested note. If the user asks for changes before confirmation, regenerate the Markdown and call `memo write` again with the same session id. This updates the same draft and session manifest instead of creating a new draft.
 

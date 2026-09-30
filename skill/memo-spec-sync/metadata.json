@@ -1,0 +1,5 @@
+{
+  "name": "memo-spec-sync",
+  "description": "将 OpenSpec change 同步到 Obsidian Vault 并展示 Spec 状态。",
+  "version": "0.1.1"
+}

@@ -1,0 +1,37 @@
+version: 1
+# 可编辑示例；文字规则以《知识库规范.md》为准。
+default_path: 90-收件箱
+assets_path: assets
+required_frontmatter:
+  - title
+  - created
+  - updated
+  - type
+  - domain
+  - tags
+  - status
+  - summary
+status_values:
+  - 草稿
+  - 待确认
+  - 已确认
+  - 已过期
+type_values:
+  - 项目分析
+  - 技术方案
+  - 技术记录
+  - 故障复盘
+  - 需求文档
+  - 接口契约
+  - 上线文档
+  - 提测文档
+  - 技术调研
+  - 工具笔记
+  - 会议记录
+routing:
+  - when:
+      type: 需求文档
+    path: 30-方案与需求/PRD
+  - when:
+      type: 项目分析
+    path: 20-项目/{project}

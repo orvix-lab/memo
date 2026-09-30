@@ -240,8 +240,9 @@ test('install kiro and cursor copy skill files and update confirmed targets', ()
   });
   assert.equal(kiro.status, 0, kiro.stderr);
   assert.equal(existsSync(path.join(kiroHome, 'skills', 'memo', 'SKILL.md')), true);
-  assert.equal(existsSync(path.join(kiroHome, 'skills', 'memo', 'metadata.json')), true);
-
+  assert.equal(existsSync(path.join(kiroHome, 'skills', 'memo-organize', 'SKILL.md')), true);
+  assert.equal(existsSync(path.join(kiroHome, 'skills', 'memo-organize', 'metadata.json')), true);
+  assert.match(readFileSync(path.join(kiroHome, 'skills', 'memo-organize', 'SKILL.md'), 'utf8'), /memo-organize/);
   const cursor = runMemo(root, ['install', '--target', 'cursor'], {
     env: { CURSOR_HOME: cursorHome },
   });
@@ -722,4 +723,45 @@ test('remote write does not perform a second pull after readiness checks', () =>
 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(existsSync(draftPathFromOutput(result.stdout)), true);
+});
+
+test('spec sync mirrors an OpenSpec change and preserves notes', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  const openspecRoot = path.join(root, 'openspec');
+  const change = path.join(openspecRoot, 'changes', 'sample-change');
+  mkdirSync(path.join(change, 'specs', 'sample-capability'), { recursive: true });
+  writeFileSync(path.join(change, 'proposal.md'), '# Proposal\n');
+  writeFileSync(path.join(change, 'design.md'), '# Design\n');
+  writeFileSync(path.join(change, 'tasks.md'), '# Tasks\n\n- [x] 1.1 Done\n- [ ] 1.2 Todo\n');
+  writeFileSync(path.join(change, 'specs', 'sample-capability', 'spec.md'), '# Spec Delta\n');
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault, '--notes-dir', 'auto']).status, 0);
+
+  const first = runMemo(root, ['spec', 'sync', '--change', 'sample-change', '--from-path', openspecRoot]);
+  assert.equal(first.status, 0, first.stderr);
+  const mirror = path.join(vault, '30-方案与需求', 'openspec', 'sample-change');
+  assert.equal(existsSync(path.join(mirror, 'proposal.md')), true);
+  assert.equal(existsSync(path.join(mirror, 'specs', 'sample-capability', 'spec.md')), true);
+  const readme = readFileSync(path.join(mirror, 'README.md'), 'utf8');
+  assert.match(readme, /spec_tasks_completed: 1/);
+  assert.match(readme, /spec_tasks_total: 2/);
+  assert.match(readme, /spec_stage: "实施中"/);
+
+  writeFileSync(path.join(mirror, 'notes.md'), '# Personal note\n');
+  writeFileSync(path.join(change, 'tasks.md'), '# Tasks\n\n- [x] 1.1 Done\n- [x] 1.2 Todo\n');
+  const second = runMemo(root, ['spec', 'sync', '--change', 'sample-change', '--from-path', openspecRoot]);
+  assert.equal(second.status, 0, second.stderr);
+  assert.equal(readFileSync(path.join(mirror, 'notes.md'), 'utf8'), '# Personal note\n');
+  const state = JSON.parse(readFileSync(path.join(mirror, 'sync-state.json'), 'utf8'));
+  assert.equal(state.tasks.completed, 2);
+  assert.equal(state.stage, '待归档');
+});
+
+test('spec sync rejects missing source path', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+  const result = runMemo(root, ['spec', 'sync', '--change', 'sample-change', '--from-path', path.join(root, 'missing')]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /source path does not exist/);
 });

@@ -1,5 +1,5 @@
 {
   "name": "memo",
   "description": "Archive AI-generated notes into a configured Obsidian vault.",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

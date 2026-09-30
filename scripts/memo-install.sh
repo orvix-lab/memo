@@ -15,35 +15,40 @@ done
 
 [ -n "$TARGET" ] || { memo_error "Install target is required."; exit 2; }
 
-install_codex() {
-  dest="${CODEX_HOME:-$HOME/.codex}/skills/memo"
-  mkdir -p "$dest"
+install_skill_pair() {
+  home="$1"
+  dest="$home/skills/memo"
+  organize_dest="$home/skills/memo-organize"
+  spec_dest="$home/skills/memo-spec-sync"
+  sync_dest="$home/skills/memo-sync"
+  mkdir -p "$dest" "$organize_dest" "$spec_dest" "$sync_dest"
   cp "$REPO_ROOT/skill/SKILL.md" "$dest/SKILL.md"
   cp "$REPO_ROOT/skill/metadata.json" "$dest/metadata.json"
+  cp "$REPO_ROOT/skill/memo-organize/SKILL.md" "$organize_dest/SKILL.md"
+  cp "$REPO_ROOT/skill/memo-organize/metadata.json" "$organize_dest/metadata.json"
+  cp "$REPO_ROOT/skill/memo-spec-sync/SKILL.md" "$spec_dest/SKILL.md"
+  cp "$REPO_ROOT/skill/memo-spec-sync/metadata.json" "$spec_dest/metadata.json"
+  cp "$REPO_ROOT/skill/memo-sync/SKILL.md" "$sync_dest/SKILL.md"
+  cp "$REPO_ROOT/skill/memo-sync/metadata.json" "$sync_dest/metadata.json"
+}
+
+install_codex() {
+  install_skill_pair "${CODEX_HOME:-$HOME/.codex}"
   printf 'codex\n'
 }
 
 install_claude() {
-  dest="${CLAUDE_HOME:-$HOME/.claude}/skills/memo"
-  mkdir -p "$dest"
-  cp "$REPO_ROOT/skill/SKILL.md" "$dest/SKILL.md"
-  cp "$REPO_ROOT/skill/metadata.json" "$dest/metadata.json"
+  install_skill_pair "${CLAUDE_HOME:-$HOME/.claude}"
   printf 'claude\n'
 }
 
 install_kiro() {
-  dest="${KIRO_HOME:-$HOME/.kiro}/skills/memo"
-  mkdir -p "$dest"
-  cp "$REPO_ROOT/skill/SKILL.md" "$dest/SKILL.md"
-  cp "$REPO_ROOT/skill/metadata.json" "$dest/metadata.json"
+  install_skill_pair "${KIRO_HOME:-$HOME/.kiro}"
   printf 'kiro\n'
 }
 
 install_cursor() {
-  dest="${CURSOR_HOME:-$HOME/.cursor}/skills/memo"
-  mkdir -p "$dest"
-  cp "$REPO_ROOT/skill/SKILL.md" "$dest/SKILL.md"
-  cp "$REPO_ROOT/skill/metadata.json" "$dest/metadata.json"
+  install_skill_pair "${CURSOR_HOME:-$HOME/.cursor}"
   printf 'cursor\n'
 }
 

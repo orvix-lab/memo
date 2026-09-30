@@ -38,6 +38,7 @@ memo_validate_language "$MEMO_LANGUAGE"
 memo_validate_mode "$MEMO_MODE"
 memo_validate_vault
 memo_prepare_vault_dirs
+node "$SCRIPT_DIR/memo-governance.mjs" init "$MEMO_VAULT"
 
 case "$MEMO_MODE" in
   local)

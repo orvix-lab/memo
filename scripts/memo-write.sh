@@ -10,10 +10,12 @@ TARGET_PATH=""
 CONTENT_FILE=""
 ATTACHMENTS=""
 ABANDON="false"
+MANAGED="false"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --abandon) ABANDON="true"; shift ;;
+    --managed) MANAGED="true"; shift ;;
     --session) SESSION_ID="$2"; shift 2 ;;
     --title) TITLE="$2"; shift 2 ;;
     --path) TARGET_PATH="$2"; shift 2 ;;
@@ -71,6 +73,10 @@ fi
 [ -s "$CONTENT_FILE" ] || { memo_error "content is empty"; exit 1; }
 
 memo_validate_ready_without_remote_pull
+if [ "$MANAGED" = "true" ]; then
+  [ -n "$TARGET_PATH" ] || { memo_error "managed knowledge write requires --path"; exit 2; }
+  node "$SCRIPT_DIR/memo-governance.mjs" validate "$MEMO_VAULT" "$CONTENT_FILE" "$TARGET_PATH"
+fi
 
 case "$SESSION_ID" in
   "") SESSION_ID="$(date +%Y%m%d%H%M%S)-$$" ;;

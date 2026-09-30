@@ -1,0 +1,5 @@
+{
+  "name": "memo-sync",
+  "description": "手动确认后同步当前或指定 OpenSpec change 到 Obsidian Vault。",
+  "version": "0.1.1"
+}
