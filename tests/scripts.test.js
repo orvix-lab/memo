@@ -790,3 +790,38 @@ test('spec sync falls back to proposal Why and does not infer missing projects',
   assert.match(readme, /spec_projects: "未声明"/);
   assert.match(readme, /spec_project_branches: "未声明"/);
 });
+
+test('spec sync summarizes an undeclared summary from the proposal and design', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  const openspecRoot = path.join(root, 'openspec');
+  const change = path.join(openspecRoot, 'changes', 'summarized-change');
+  mkdirSync(change, { recursive: true });
+  writeFileSync(path.join(change, 'proposal.md'), '# 提案\n\n## 为什么\n\n现有链路只保存面额。\n\n本次变更按一期一券锁定减免边界，并按剩余账单试算核销。\n');
+  writeFileSync(path.join(change, 'design.md'), '# 设计\n\n## 目标 / 非目标\n\n**目标：**\n- 由资产侧保存减免边界。\n\n**非目标：**\n- 不改客户端页面。\n');
+  writeFileSync(path.join(change, 'tasks.md'), '# Tasks\n\n- [ ] 1.1 Todo\n');
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+
+  const result = runMemo(root, ['spec', 'sync', '--change', 'summarized-change', '--from-path', openspecRoot]);
+  assert.equal(result.status, 0, result.stderr);
+  const readme = readFileSync(path.join(vault, '30-方案与需求', 'openspec', 'summarized-change', 'README.md'), 'utf8');
+  assert.match(readme, /spec_summary: "本次变更按一期一券锁定减免边界，并按剩余账单试算核销。"/);
+  assert.doesNotMatch(readme, /spec_summary: "未声明"/);
+});
+
+test('spec sync uses design goals when the proposal has no change statement', () => {
+  const root = makeTempRoot();
+  const vault = makeVault(root);
+  const openspecRoot = path.join(root, 'openspec');
+  const change = path.join(openspecRoot, 'changes', 'goal-change');
+  mkdirSync(change, { recursive: true });
+  writeFileSync(path.join(change, 'proposal.md'), '# 提案\n\n## 为什么\n\n还款入账存在并发重复处理问题：\n\n- 触发点：补偿任务覆盖成功状态。\n');
+  writeFileSync(path.join(change, 'design.md'), '# 设计\n\n## 目标 / 非目标\n\n**目标：**\n- 同一笔还款单只入账一次。\n- 入账要么全部成功，要么什么都不写。\n\n**非目标：**\n- 不重构分配算法。\n');
+  writeFileSync(path.join(change, 'tasks.md'), '# Tasks\n\n- [ ] 1.1 Todo\n');
+  assert.equal(runMemo(root, ['init', '--language', 'en', '--mode', 'local', '--vault', vault]).status, 0);
+
+  const result = runMemo(root, ['spec', 'sync', '--change', 'goal-change', '--from-path', openspecRoot]);
+  assert.equal(result.status, 0, result.stderr);
+  const readme = readFileSync(path.join(vault, '30-方案与需求', 'openspec', 'goal-change', 'README.md'), 'utf8');
+  assert.match(readme, /spec_summary: "同一笔还款单只入账一次。入账要么全部成功，要么什么都不写。"/);
+});

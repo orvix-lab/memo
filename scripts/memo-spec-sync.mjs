@@ -2,6 +2,7 @@
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 
 function fail(message) { console.error(message); process.exit(1); }
@@ -12,18 +13,71 @@ function unquote(value) {
   if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) return trimmed.slice(1, -1);
   return trimmed;
 }
-function firstWhyParagraph(content) {
-  const heading = content.match(/^## Why\s*$/m);
-  if (!heading || heading.index === undefined) return '未声明';
+function sectionBody(content, titles) {
+  if (!content) return '';
+  const escaped = titles.map((title) => title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const heading = content.match(new RegExp(`^##\\s+(?:${escaped.join('|')})\\s*$`, 'm'));
+  if (!heading || heading.index === undefined) return '';
   const remainder = content.slice(heading.index + heading[0].length);
   const nextHeading = remainder.search(/^##\s/m);
   const section = nextHeading >= 0 ? remainder.slice(0, nextHeading) : remainder;
-  const paragraph = section.split(/\r?\n\s*\r?\n/).map((part) => part.replace(/<!--[^]*?-->/g, '').trim()).find(Boolean);
-  return paragraph || '未声明';
+  return section.replace(/<!--[^]*?-->/g, '').trim();
 }
-function proposalContext(proposalPath) {
+function plain(text) {
+  return text.replace(/\*\*/g, '').replace(/`/g, '').replace(/\s+/g, ' ').trim();
+}
+function paragraphs(section) {
+  return section.split(/\r?\n\s*\r?\n/).map((part) => plain(part.replace(/^[-*]\s+/gm, ''))).filter(Boolean);
+}
+function proseParagraphs(section) {
+  return paragraphs(section).filter((paragraph) => !/[：:]\s*$/.test(paragraph) && (paragraph.match(/[：:]/g) || []).length < 3);
+}
+function finish(text) {
+  const normalized = plain(text);
+  if (!normalized) return '';
+  return /[。！？.!?]$/.test(normalized) ? normalized : `${normalized}。`;
+}
+function cap(text, max) {
+  const normalized = plain(text);
+  if (!normalized || normalized.length <= max) return normalized;
+  const sliced = normalized.slice(0, max);
+  const boundary = Math.max(sliced.lastIndexOf('。'), sliced.lastIndexOf('；'), sliced.lastIndexOf('，'));
+  const cut = boundary >= 24 ? sliced.slice(0, boundary + 1) : sliced;
+  return /[。！？.!?；;，,]$/.test(cut) ? cut : `${cut}。`;
+}
+function designGoals(design) {
+  const section = sectionBody(design, ['目标 / 非目标', '目标与非目标', 'Goals / Non-Goals', '目标', 'Goals']);
+  if (!section) return [];
+  const goalPart = section.split(/\*\*非目标[:：]?\*\*|\*\*Non-Goals[:：]?\*\*/i)[0];
+  return goalPart.split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^[-*]\s+/.test(line))
+    .map((line) => plain(line.replace(/^[-*]\s+/, '')).replace(/[。！？.!?]+$/, ''))
+    .filter((line) => line && !/^(目标|Goals)[:：]?$/.test(line));
+}
+function summarizeDocuments(proposalContent, designContent) {
+  const why = sectionBody(proposalContent, ['为什么', 'Why']);
+  const prose = proseParagraphs(why);
+  const intent = prose.find((paragraph) => /^本次/.test(paragraph));
+  const goals = designGoals(designContent);
+  if (intent) return cap(finish(intent), 180);
+  const thereforeSource = prose.find((paragraph) => paragraph.includes('因此'));
+  const goalText = goals.slice(0, 2).map((goal) => finish(goal)).join('');
+  if (thereforeSource && goals[0]) {
+    const therefore = thereforeSource.slice(thereforeSource.lastIndexOf('因此')).replace(/^因此需要/, '').replace(/^因此/, '').trim();
+    return cap(`${finish(therefore).replace(/。$/, '')}，${goals[0]}。`, 180);
+  }
+  if (thereforeSource) return cap(finish(thereforeSource), 180);
+  if (goalText) return cap(goalText, 180);
+  if (prose[0]) return cap(finish(prose[0]), 180);
+  const changeParagraph = proseParagraphs(sectionBody(proposalContent, ['变更内容', 'What Changes']))[0];
+  if (changeParagraph) return cap(finish(changeParagraph), 180);
+  return '未声明';
+}
+function proposalContext(proposalPath, designPath = '') {
   if (!existsSync(proposalPath)) return { summary: '未声明', projects: [], projectNames: '未声明', projectBranches: '未声明' };
   const content = readFileSync(proposalPath, 'utf8');
+  const designContent = designPath && existsSync(designPath) ? readFileSync(designPath, 'utf8') : '';
   const frontmatter = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
   let summary = '';
   const projects = [];
@@ -49,7 +103,7 @@ function proposalContext(proposalPath) {
       if (branchMatch && currentProject) currentProject.branch = unquote(branchMatch[1]) || '未声明';
     }
   }
-  const resolvedSummary = summary || firstWhyParagraph(content);
+  const resolvedSummary = summary || summarizeDocuments(content, designContent);
   const validProjects = projects.filter((project) => project.name);
   return {
     summary: resolvedSummary || '未声明',
@@ -118,7 +172,7 @@ function main(vault, change, sourcePath) {
   const changeRoot = resolveChange(sourcePath, change);
   const artifacts = artifactSummary(changeRoot);
   const tasks = taskCounts(join(changeRoot, 'tasks.md'));
-  const context = proposalContext(join(changeRoot, 'proposal.md'));
+  const context = proposalContext(join(changeRoot, 'proposal.md'), join(changeRoot, 'design.md'));
   const archived = changeRoot.includes(`${sep}archive${sep}`);
   const specStage = stage(artifacts, tasks, archived);
   const targetRoot = join(resolve(vault), '30-方案与需求', 'openspec', change);
@@ -149,6 +203,11 @@ function main(vault, change, sourcePath) {
   }
 }
 
-const [vault, change, sourcePath] = process.argv.slice(2);
-if (!vault || !change || !sourcePath) fail('Usage: memo-spec-sync.mjs <vault> <change> <openspec-root-or-change-dir>');
-main(vault, change, sourcePath);
+const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+if (invokedDirectly) {
+  const [vault, change, sourcePath] = process.argv.slice(2);
+  if (!vault || !change || !sourcePath) fail('Usage: memo-spec-sync.mjs <vault> <change> <openspec-root-or-change-dir>');
+  main(vault, change, sourcePath);
+}
+
+export { summarizeDocuments };

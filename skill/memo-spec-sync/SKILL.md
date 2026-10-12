@@ -37,3 +37,5 @@ memo spec sync --change <change-name> --from-path <openspec-root>
 - `待归档`：任务全部完成。
 - `已归档`：OpenSpec 已归档。
 - `同步异常`：最近同步失败，需查看错误后重试。
+
+未声明 `memo.summary` 时，从 proposal 的「为什么」或 `Why`，以及 design 的目标归纳一句任务摘要。已声明的 `memo.summary` 保持不变。项目和分支仍然只读取 Frontmatter，不从文档推测。
